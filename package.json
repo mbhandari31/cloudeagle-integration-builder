@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "scripts": { "test": "node --test \"test/**/*.test.js\"" },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\"",
+    "record": "node scripts/record.mjs"
+  },
   "dependencies": { "js-yaml": "4.1.0" },
   "devDependencies": {
     "@anthropic-ai/sdk": "1.4.0",
