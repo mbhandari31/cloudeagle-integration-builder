@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1440">
+<title>04 Test in sandbox</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Poppins:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <aside class="nav">
+    <div class="brand"><span class="brand-mark"><svg viewBox="0 0 16 16" fill="none"><path d="M2 11 8 4l6 7" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>CloudEagle</div>
+    <a href="#">Overview</a>
+    <a href="#">Applications <span class="count">412</span></a>
+    <a href="#">Spend and licences</a>
+    <a href="#">Renewals</a>
+    <a href="#">Access reviews</a>
+    <a href="#">AI governance</a>
+    <div class="nav-group">Settings</div>
+    <a href="#" class="active">Integrations <span class="count">38</span></a>
+    <a href="#">Users and roles</a>
+    <div class="nav-foot">Northwind Health</div>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="crumbs">Integrations / <b>New generated connector</b></div>
+      <div class="who"><span>Priya Raman, IT admin</span><span class="avatar">PR</span></div>
+    </header>
+    <nav class="stepper" aria-label="Progress">
+      <div class="step done"><span class="dot"><svg width="12" height="12" viewBox="0 0 10 10"><path d="m2 5 2 2 4-4" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg></span>Point at docs<span class="bar"></span></div>
+      <div class="step done"><span class="dot"><svg width="12" height="12" viewBox="0 0 10 10"><path d="m2 5 2 2 4-4" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg></span>Review plan<span class="bar"></span></div>
+      <div class="step done"><span class="dot"><svg width="12" height="12" viewBox="0 0 10 10"><path d="m2 5 2 2 4-4" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg></span>Connect<span class="bar"></span></div>
+      <div class="step current"><span class="dot">4</span>Test in sandbox<span class="bar"></span></div>
+      <div class="step "><span class="dot">5</span>Go live<span class="bar"></span></div>
+    </nav>
+    <section class="content" style="grid-template-columns: 300px 1fr;">
+      <aside class="panel" style="align-self:start">
+        <div class="panel-head"><h2>Safety checks</h2><span class="badge b-green">3 of 5 passed</span></div>
+        <ol class="ladder">
+          <li class="pass"><span class="node"><svg width="12" height="12" viewBox="0 0 10 10"><path d="m2 5 2 2 4-4" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg></span><div class="body"><div class="name">Code checks</div><div class="what">Read-only, calls only api.calendly.com</div></div></li>
+          <li class="pass"><span class="node"><svg width="12" height="12" viewBox="0 0 10 10"><path d="m2 5 2 2 4-4" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg></span><div class="body"><div class="name">Practice run</div><div class="what">Worked on the docs' sample data. Fixed 1 issue on its own.</div></div></li>
+          <li class="pass now"><span class="node"><svg width="12" height="12" viewBox="0 0 10 10"><path d="m2 5 2 2 4-4" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg></span><div class="body"><div class="name">Small live run <span class="badge b-blue">Your review</span></div><div class="what">Real data, capped at 50 people</div></div></li>
+          <li class="wait"><span class="node">4</span><div class="body"><div class="name">7-day shadow sync</div><div class="what">Full sync, kept out of reports</div></div></li>
+          <li class="wait"><span class="node">5</span><div class="body"><div class="name">Live</div><div class="what">Daily sync with health checks</div></div></li>
+        </ol>
+      </aside>
+
+      <div class="stack">
+        <div class="page-head">
+          <div>
+            <h1>Does this look like your Calendly team?</h1>
+            <p>This is a sample of real data from the small live run. You know your team best, so check that the people, roles and dates look right.</p>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:16px">
+          <div class="panel panel-pad"><p style="font-size:13px">People found</p><h1>48</h1></div>
+          <div class="panel panel-pad"><p style="font-size:13px">Also in Okta</p><h1>46</h1></div>
+          <div class="panel panel-pad" style="border-color:#F2D3A5"><p style="font-size:13px">Not active in Okta</p><h1 style="color:var(--amber)">2</h1></div>
+          <div class="panel panel-pad"><p style="font-size:13px">No meetings in 90 days</p><h1>11</h1></div>
+        </div>
+
+        <div class="panel">
+          <div class="tabs"><span class="tab on">Data preview</span><span class="tab">Run log</span><span class="tab">Code</span></div>
+          <table>
+            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Last meeting</th><th>Check</th></tr></thead>
+            <tr><td><b>Aisha Khan</b></td><td>aisha.khan@northwind.health</td><td>Owner</td><td>4 Nov 2026</td><td><span class="badge b-green">Matches Okta</span></td></tr>
+            <tr><td><b>Daniel Ortiz</b></td><td>d.ortiz@northwind.health</td><td>Admin</td><td>5 Nov 2026</td><td><span class="badge b-green">Matches Okta</span></td></tr>
+            <tr class="flag"><td><b>Marcus Lee</b></td><td>marcus.lee@gmail.com</td><td>User</td><td>12 Oct 2026</td><td><span class="badge b-amber">Personal email, not in Okta</span></td></tr>
+            <tr><td><b>Sofia Rossi</b></td><td>sofia.rossi@northwind.health</td><td>User</td><td>2 Nov 2026</td><td><span class="badge b-green">Matches Okta</span></td></tr>
+            <tr><td><b>Tom Becker</b></td><td>tom.becker@northwind.health</td><td>User</td><td>None in 90 days</td><td><span class="badge b-grey">Possibly unused</span></td></tr>
+            <tr class="flag"><td><b>Elena Petrova</b></td><td>elena.p@northwind.health</td><td>User</td><td>30 Oct 2026</td><td><span class="badge b-red">Left 14 Oct, still has access</span></td></tr>
+            <tr><td><b>Ravi Menon</b></td><td>ravi.menon@northwind.health</td><td>User</td><td>None in 90 days</td><td><span class="badge b-grey">Possibly unused</span></td></tr>
+          </table>
+        </div>
+
+        <div class="actions" style="justify-content:space-between">
+          <p style="font-size:13px">4 API calls, 1 wait for Calendly's rate limit, 0 errors, 2.1 seconds.</p>
+          <div class="actions"><button class="btn btn-ghost">Something's wrong</button><button class="btn btn-primary">Data looks right, start shadow sync</button></div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1440">
+<title>05 Code view for engineers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Poppins:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <aside class="nav">
+    <div class="brand"><span class="brand-mark"><svg viewBox="0 0 16 16" fill="none"><path d="M2 11 8 4l6 7" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>CloudEagle</div>
+    <a href="#">Overview</a>
+    <a href="#">Applications <span class="count">412</span></a>
+    <a href="#">Spend and licences</a>
+    <a href="#">Renewals</a>
+    <a href="#">Access reviews</a>
+    <a href="#">AI governance</a>
+    <div class="nav-group">Settings</div>
+    <a href="#" class="active">Integrations <span class="count">38</span></a>
+    <a href="#">Users and roles</a>
+    <div class="nav-foot">Northwind Health</div>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="crumbs">Integrations / <b>New generated connector</b></div>
+      <div class="who"><span>Priya Raman, IT admin</span><span class="avatar">PR</span></div>
+    </header>
+    <nav class="stepper" aria-label="Progress">
+      <div class="step done"><span class="dot"><svg width="12" height="12" viewBox="0 0 10 10"><path d="m2 5 2 2 4-4" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg></span>Point at docs<span class="bar"></span></div>
+      <div class="step done"><span class="dot"><svg width="12" height="12" viewBox="0 0 10 10"><path d="m2 5 2 2 4-4" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg></span>Review plan<span class="bar"></span></div>
+      <div class="step done"><span class="dot"><svg width="12" height="12" viewBox="0 0 10 10"><path d="m2 5 2 2 4-4" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg></span>Connect<span class="bar"></span></div>
+      <div class="step current"><span class="dot">4</span>Test in sandbox<span class="bar"></span></div>
+      <div class="step "><span class="dot">5</span>Go live<span class="bar"></span></div>
+    </nav>
+    <section class="content" style="grid-template-columns: 1fr 300px;">
+      <div class="stack">
+        <div class="page-head">
+          <div>
+            <h1>The code behind the connector</h1>
+            <p>For engineers and security reviewers. Each highlighted citation on the right links to the part of Calendly's docs that line relies on.</p>
+          </div>
+          <div class="actions"><button class="btn btn-ghost">Download</button><button class="btn btn-ghost">Compare versions</button></div>
+        </div>
+        <div class="panel" style="overflow:hidden">
+          <div class="tabs"><span class="tab">Data preview</span><span class="tab">Run log</span><span class="tab on">Code</span><span class="tab" style="margin-left:auto; color:var(--slate-2)">calendly.connector.ts</span></div>
+        <div class="code">
+          <div class="ln"><span class="n">1</span><span class="c"><span class="cm">// Calendly connector, generated 6 Nov 2026, version 1</span></span><span class="src"></span></div>
+          <div class="ln"><span class="n">2</span><span class="c"><span class="k">import</span> { defineConnector, http, paginate } <span class="k">from</span> <span class="s">"@cloudeagle/connector-sdk"</span>;</span><span class="src"></span></div>
+          <div class="ln"><span class="n">3</span><span class="c"><span class="cm">// Retries, rate limits, logging and secrets are handled by the SDK.</span></span><span class="src"></span></div>
+          <div class="ln"><span class="n">4</span><span class="c"><span class="k">export</span> <span class="k">default</span> <span class="f">defineConnector</span>({</span><span class="src"></span></div>
+          <div class="ln"><span class="n">5</span><span class="c">  app: <span class="s">"calendly"</span>,</span><span class="src"></span></div>
+          <div class="ln"><span class="n">6</span><span class="c">  baseUrl: <span class="s">"https://api.calendly.com"</span>,</span><span class="src"><span>servers</span></span></div>
+          <div class="ln"><span class="n">7</span><span class="c">  auth: {</span><span class="src"></span></div>
+          <div class="ln"><span class="n">8</span><span class="c">    type: <span class="s">"oauth2"</span>, <span class="cm">// or personal access token</span></span><span class="src"><span>securitySchemes</span></span></div>
+          <div class="ln"><span class="n">9</span><span class="c">    scopes: [<span class="s">"users:read"</span>, <span class="s">"organizations:read"</span>, <span class="s">"scheduled_events:read"</span>],</span><span class="src"><span>required scopes</span></span></div>
+          <div class="ln"><span class="n">10</span><span class="c">  },</span><span class="src"></span></div>
+          <div class="ln"><span class="n">11</span><span class="c">  <span class="k">async</span> *users() {</span><span class="src"></span></div>
+          <div class="ln"><span class="n">12</span><span class="c">    <span class="k">const</span> me = <span class="k">await</span> http.<span class="f">get</span>(<span class="s">"/users/me"</span>);</span><span class="src"><span>/users/me</span></span></div>
+          <div class="ln"><span class="n">13</span><span class="c">    <span class="k">const</span> org = me.resource.current_organization;</span><span class="src"></span></div>
+          <div class="ln hl"><span class="n">14</span><span class="c">    <span class="k">yield</span>* <span class="f">paginate</span>(<span class="s">"/organization_memberships"</span>, {</span><span class="src"><span>/organization_memberships</span></span></div>
+          <div class="ln hl"><span class="n">15</span><span class="c">      query: { organization: org, count: 100 },</span><span class="src"><span>count max 100</span></span></div>
+          <div class="ln hl"><span class="n">16</span><span class="c">      next: (res) =&gt; res.pagination.next_page_token,</span><span class="src"><span>pagination</span></span></div>
+          <div class="ln"><span class="n">17</span><span class="c">      map: (m) =&gt; ({ email: m.user.email, name: m.user.name, role: m.role }),</span><span class="src"></span></div>
+          <div class="ln"><span class="n">18</span><span class="c">    });</span><span class="src"></span></div>
+          <div class="ln"><span class="n">19</span><span class="c">  },</span><span class="src"></span></div>
+          <div class="ln"><span class="n">20</span><span class="c">  <span class="k">async</span> *usage({ org, since }) {</span><span class="src"></span></div>
+          <div class="ln"><span class="n">21</span><span class="c">    <span class="k">yield</span>* <span class="f">paginate</span>(<span class="s">"/scheduled_events"</span>, {</span><span class="src"><span>/scheduled_events</span></span></div>
+          <div class="ln"><span class="n">22</span><span class="c">      query: { organization: org, min_start_time: since, count: 100 },</span><span class="src"></span></div>
+          <div class="ln"><span class="n">23</span><span class="c">      next: (res) =&gt; res.pagination.next_page_token,</span><span class="src"><span>pagination</span></span></div>
+          <div class="ln"><span class="n">24</span><span class="c">      map: (e) =&gt; e.event_memberships.<span class="f">map</span>((m) =&gt; ({ email: m.user_email, at: e.start_time })),</span><span class="src"></span></div>
+          <div class="ln"><span class="n">25</span><span class="c">    });</span><span class="src"></span></div>
+          <div class="ln"><span class="n">26</span><span class="c">  },</span><span class="src"></span></div>
+          <div class="ln"><span class="n">27</span><span class="c">  errors: { 401: <span class="s">"reconnect"</span>, 403: <span class="s">"missing_scope"</span>, 429: <span class="s">"back_off"</span> },</span><span class="src"><span>error responses</span></span></div>
+          <div class="ln"><span class="n">28</span><span class="c">});</span><span class="src"></span></div>
+        </div>
+        </div>
+      </div>
+
+      <aside class="stack">
+        <div class="panel panel-pad stack" style="gap:12px">
+          <h2>Generated files</h2>
+          <dl class="kv">
+            <dt>calendly.connector.ts</dt><dd>28 lines</dd>
+            <dt>calendly.mock.json</dt><dd>Practice data</dd>
+            <dt>calendly.test.ts</dt><dd>6 checks</dd>
+          </dl>
+        </div>
+        <div class="panel panel-pad stack" style="gap:12px">
+          <h2>Handled by CloudEagle, not this code</h2>
+          <ul class="stack" style="gap:8px; padding-left:18px; font-size:13px; color:var(--slate)">
+            <li>Retries and backing off on rate limits</li>
+            <li>Logging, with personal data redacted</li>
+            <li>Adding the access token to requests</li>
+            <li>Blocking writes and other domains</li>
+          </ul>
+        </div>
+        <div class="panel panel-pad stack" style="gap:12px">
+          <h2>Change the code</h2>
+          <p style="font-size:13px">Edit it directly, or describe the change and we'll rewrite it and run the safety checks again.</p>
+          <div class="input"><span class="muted">For example: skip events with no invitees</span></div>
+        </div>
+        <div class="note note-blue"><div><b>Engineer sign-off required</b><p>During the internal pilot, an integrations engineer approves every generated connector before it goes live.</p></div></div>
+      </aside>
+    </section>
+
+  </div>
+</div>
+</body>
+</html>

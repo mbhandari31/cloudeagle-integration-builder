@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1440">
+<title>02 Review the plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Poppins:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <aside class="nav">
+    <div class="brand"><span class="brand-mark"><svg viewBox="0 0 16 16" fill="none"><path d="M2 11 8 4l6 7" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>CloudEagle</div>
+    <a href="#">Overview</a>
+    <a href="#">Applications <span class="count">412</span></a>
+    <a href="#">Spend and licences</a>
+    <a href="#">Renewals</a>
+    <a href="#">Access reviews</a>
+    <a href="#">AI governance</a>
+    <div class="nav-group">Settings</div>
+    <a href="#" class="active">Integrations <span class="count">38</span></a>
+    <a href="#">Users and roles</a>
+    <div class="nav-foot">Northwind Health</div>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="crumbs">Integrations / <b>New generated connector</b></div>
+      <div class="who"><span>Priya Raman, IT admin</span><span class="avatar">PR</span></div>
+    </header>
+    <nav class="stepper" aria-label="Progress">
+      <div class="step done"><span class="dot"><svg width="12" height="12" viewBox="0 0 10 10"><path d="m2 5 2 2 4-4" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg></span>Point at docs<span class="bar"></span></div>
+      <div class="step current"><span class="dot">2</span>Review plan<span class="bar"></span></div>
+      <div class="step "><span class="dot">3</span>Connect<span class="bar"></span></div>
+      <div class="step "><span class="dot">4</span>Test in sandbox<span class="bar"></span></div>
+      <div class="step "><span class="dot">5</span>Go live<span class="bar"></span></div>
+    </nav>
+    <section class="content cols-main-rail">
+      <div class="stack">
+        <div class="page-head">
+          <div>
+            <h1>Here's what we'll read from Calendly</h1>
+            <p>We read 65 endpoints and picked the 3 that answer your questions. Every field below links to the part of Calendly's docs it came from.</p>
+          </div>
+          <span class="badge b-blue">Draft plan, v1</span>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Field mapping</h2><p>2 fields need a quick look</p></div>
+          <table>
+            <thead><tr><th style="width:130px">CloudEagle field</th><th>Comes from in Calendly</th><th style="width:104px">Confidence</th><th style="width:240px">Source</th></tr></thead>
+            <tr><td><b>User email</b></td><td>Organisation membership, user email</td><td><span class="badge b-green">High</span></td><td><span class="cite">GET /organization_memberships</span></td></tr>
+            <tr><td><b>User name</b></td><td>Organisation membership, user name</td><td><span class="badge b-green">High</span></td><td><span class="cite">GET /organization_memberships</span></td></tr>
+            <tr><td><b>Role</b></td><td>Membership role: owner, admin or user</td><td><span class="badge b-green">High</span></td><td><span class="cite">GET /organization_memberships</span></td></tr>
+            <tr class="flag"><td><b>Status</b></td><td>Members are active; pending invites are left out<div class="sub">Check: should invites count toward seats?</div></td><td><span class="badge b-amber">Medium</span></td><td><span class="cite">GET /organization_memberships</span></td></tr>
+            <tr class="flag"><td><b>Last active</b></td><td>Their latest scheduled meeting, last 90 days<div class="sub">Meetings booked, not logins</div></td><td><span class="badge b-amber">Medium</span></td><td><span class="cite">GET /scheduled_events</span></td></tr>
+          </table>
+        </div>
+
+        <div class="note note-amber">
+          <svg class="ico" viewBox="0 0 20 20" fill="none"><path d="M10 2.5 18 17H2L10 2.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4M10 14.5v.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <div><b>Calendly's activity log needs an Enterprise plan</b><p>It would give exact login dates. Your plan doesn't include it, so we'll use scheduled meetings instead. If you upgrade, we'll offer to switch automatically.</p></div>
+        </div>
+
+      </div>
+
+      <aside class="stack">
+        <div class="panel panel-pad stack" style="gap:12px">
+          <h2>Something not right?</h2>
+          <p style="font-size:13px">Tell us in plain words and we'll redraft the plan.</p>
+          <div class="input"><span class="muted">For example: count no-shows as inactive</span></div>
+          <button class="btn btn-ghost">Redraft plan</button>
+        </div>
+
+        <div class="panel panel-pad stack" style="gap:12px">
+          <h2>How the connector will behave</h2>
+          <dl class="kv">
+            <dt>Pages</dt><dd>100 records each</dd>
+            <dt>Rate limit hit</dt><dd>Wait and retry</dd>
+            <dt>Calendly is down</dt><dd>Retry 3 times</dd>
+            <dt>Token expires</dt><dd>Ask you to reconnect</dd>
+            <dt>Sync schedule</dt><dd>Daily, 02:00 UTC</dd>
+          </dl>
+        </div>
+
+        <div class="panel panel-pad stack" style="gap:12px">
+          <h2>Permissions we'll ask for</h2>
+          <p style="font-size:13px">Read only. Calendly offers 10 write permissions; we never request them.</p>
+          <div class="actions" style="flex-wrap:wrap; gap:8px">
+            <span class="badge b-green">users:read</span>
+            <span class="badge b-green">organizations:read</span>
+            <span class="badge b-green">scheduled_events:read</span>
+            <span class="badge b-grey" style="text-decoration:line-through">scheduled_events:write</span>
+            <span class="badge b-grey">+9 write permissions blocked</span>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <div class="footer-bar">
+      <p>Nothing has connected to Calendly yet.</p>
+      <div class="actions"><button class="btn btn-ghost">Back</button><button class="btn btn-primary">Approve plan and connect</button></div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
