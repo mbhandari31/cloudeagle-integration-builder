@@ -13,11 +13,23 @@ The pipeline is in `src/pipeline.js`. It runs the same way in Node and in the br
 - **Slice:** the spec is cut down to the planned endpoints, with `$ref`s resolved.
 - **Generate:** Claude Sonnet writes the connector against a small SDK, `@cloudeagle/connector-sdk`, and cites the spec with a trailing `// source:` comment on each line that calls an endpoint.
 - **Code checks:** a static scan rejects network globals, sandbox escapes, dynamic imports, write calls, credential access and other hosts.
-- **Practice run:** the connector is transpiled and run against a mock server built from the spec's response schemas (48 fictional people, 37 with recent activity, cursor pagination).
+- **Practice run:** the connector is transpiled and run against a mock server built from the spec's response schemas (48 fictional people, 37 with recent activity). See "What the mock emulates" below.
 - **Schema check:** the output is checked for valid emails, ISO 8601 dates and activity that belongs to known users.
 - **Repair:** any failure goes back to Sonnet with the error, up to 3 times.
 
 The page shows each step as it happens: the plan with citations, the safety ladder, the attempt history, the data preview, the code with citations in the gutter, and the sandbox's request log.
+
+## What the mock emulates
+
+`src/sandbox/mockServer.js` builds responses from the spec's JSON response schemas:
+
+- **Lists:** a root array response, or every top-level array-of-objects property, is filled from a pool of 48 records on paths that mention members or users, and 120 elsewhere. Nested arrays inside a record get one item.
+- **Cursor pagination** when the response has a cursor field, either inside a pagination object or at the top level (`next_page_token`, `next_cursor`, `next_page`, `next`, `nextPageToken`, `nextCursor`). Tokens are opaque `p<N>` values; `next_page`/`next` are full URLs. The page size comes from `count`, `limit`, `per_page`, `page_size` or `pageSize`.
+- **Offset pagination** when the operation takes `offset` (with `limit` or another size parameter), and **page-number pagination** when it takes `page` (with `per_page` or similar). A declared default page size is honoured, otherwise 20.
+- **`has_more`** (or `hasMore`) is true until the last page; `total`/`total_count` report the pool size.
+- A list with no paging parameters returns the whole pool in one response.
+
+Not emulated: item-ID cursors such as `starting_after=<id>`, `Link` headers, rate limits, and errors other than 404 for unknown paths.
 
 ## Safety model
 
