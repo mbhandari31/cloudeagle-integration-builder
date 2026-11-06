@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'sha256-brkzkCD4b44b9JQz7pXVa4SZ7gqjN6qF8W8IObPZyOY='; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.anthropic.com https:; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>AI Integration Builder</title>
+<meta name="description" content="Prototype: point the builder at an OpenAPI spec, watch Claude plan and write a connector, and see CloudEagle's sandbox check it.">
+<script type="importmap">
+{
+  "imports": {
+    "@anthropic-ai/sdk": "https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@1.4.0/+esm",
+    "js-yaml": "https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/+esm",
+    "sucrase": "https://cdn.jsdelivr.net/npm/sucrase@3.35.0/+esm"
+  }
+}
+</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 rx=%274%27 fill=%27%232145FF%27/%3E%3Cpath d=%27M3 11 8 5l5 6%27 stroke=%27white%27 stroke-width=%272%27 fill=%27none%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Poppins:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/app.css">
+<script type="module" src="src/ui/app.js"></script>
+</head>
+<body>
+<div class="app">
+  <aside class="nav" aria-label="CloudEagle">
+    <div class="brand"><span class="brand-mark"><svg viewBox="0 0 16 16" fill="none"><path d="M2 11 8 4l6 7" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>CloudEagle</div>
+    <a href="#" aria-disabled="true">Overview</a>
+    <a href="#" aria-disabled="true">Applications <span class="count">412</span></a>
+    <a href="#" aria-disabled="true">Spend and licences</a>
+    <a href="#" aria-disabled="true">Renewals</a>
+    <a href="#" aria-disabled="true">Access reviews</a>
+    <a href="#" aria-disabled="true">AI governance</a>
+    <div class="nav-group">Settings</div>
+    <a href="#" class="active" aria-current="page">Integrations <span class="count">38</span></a>
+    <a href="#" aria-disabled="true">Users and roles</a>
+    <div class="nav-foot">Northwind Health (fictional)</div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="crumbs">Integrations / <b>New generated connector</b></div>
+      <div class="topbar-right">
+        <div class="seg" role="radiogroup" aria-label="Mode">
+          <button type="button" role="radio" data-mode="replay" aria-checked="true">Recorded run</button>
+          <button type="button" role="radio" data-mode="live" aria-checked="false">Live with your key</button>
+        </div>
+        <div class="who"><span>Priya Raman, IT admin</span><span class="avatar">PR</span></div>
+      </div>
+    </header>
+
+    <nav class="stepper" id="stepper" aria-label="Progress"></nav>
+
+    <section class="content cols-main-rail">
+      <div class="stack">
+        <div class="note note-blue disclaimer"><svg class="ico" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5m0-7.5v.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><p>Prototype: sandbox runs on synthetic data generated from the API spec. No real customer data is used.</p></div>
+
+        <div class="page-head">
+          <div>
+            <h1 id="title">Build a connector from API docs</h1>
+            <p id="subtitle">Point the builder at an OpenAPI spec. Claude plans the connector and writes it, then CloudEagle's runtime checks it before you see any data.</p>
+          </div>
+        </div>
+
+        <form class="panel panel-pad start" id="start-form" novalidate>
+          <div class="field">
+            <label for="spec-url">API docs (OpenAPI URL)</label>
+            <input id="spec-url" class="input" type="url" spellcheck="false" autocomplete="off">
+            <p class="hint" id="url-hint"></p>
+          </div>
+          <div class="field live-only" hidden>
+            <label for="api-key">Anthropic API key</label>
+            <div class="key-row">
+              <input id="api-key" class="input" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your key">
+              <button type="button" class="btn btn-ghost" id="forget-key">Forget key</button>
+            </div>
+            <p class="hint">Your key stays in this tab and is sent only to api.anthropic.com.</p>
+          </div>
+          <div id="replay-missing" class="note note-amber" hidden><p>Recorded run isn't available yet. Use Live with your own key.</p></div>
+          <div class="actions">
+            <button type="submit" class="btn btn-primary" id="run-btn">Build connector</button>
+            <button type="button" class="btn btn-ghost" id="skip-btn" hidden>Skip waiting</button>
+            <span class="status-line" id="status" role="status" aria-live="polite"></span>
+          </div>
+        </form>
+
+        <div id="error"></div>
+
+        <section class="stack" id="plan-section" hidden>
+          <div class="section-head">
+            <h2 id="plan-title">The plan</h2>
+            <p id="plan-sub"></p>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h2>Field mapping</h2><p id="plan-count"></p></div>
+            <div id="plan-table"></div>
+          </div>
+          <div id="limitations"></div>
+          <div class="panel panel-pad">
+            <h3>Endpoints the connector will call</h3>
+            <div id="endpoints"></div>
+          </div>
+        </section>
+
+      </div>
+
+      <aside class="stack rail">
+        <div class="panel">
+          <div class="panel-head"><h2>Safety checks</h2><span id="ladder-badge"></span></div>
+          <ol class="ladder" id="ladder"></ol>
+        </div>
+        <div class="panel panel-pad">
+          <h3>Attempts</h3>
+          <div id="attempts"></div>
+        </div>
+        <div class="panel panel-pad" id="scopes-panel" hidden>
+          <h3>Permissions we'll ask for</h3>
+          <div id="scopes"></div>
+        </div>
+      </aside>
+
+      <section class="stack results" id="results-section" hidden>
+        <div class="section-head">
+          <h2 id="results-title">What the connector returned</h2>
+          <p>From the practice run on generated data. Check that the people, roles and dates look right.</p>
+        </div>
+        <div class="stats" id="stat-cards"></div>
+        <div class="panel tabs-panel">
+          <div class="tabs" role="tablist">
+            <button type="button" class="tab on" role="tab" data-tab="data" aria-selected="true">Data preview</button>
+            <button type="button" class="tab" role="tab" data-tab="code" aria-selected="false">Code</button>
+            <button type="button" class="tab" role="tab" data-tab="log" aria-selected="false">Run log</button>
+            <span class="tab-file" id="code-file"></span>
+          </div>
+          <div class="tab-body" data-pane="data" id="data-pane"></div>
+          <div class="tab-body" data-pane="code" hidden><div class="code" id="code-pane"></div></div>
+          <div class="tab-body" data-pane="log" id="log-pane" hidden></div>
+        </div>
+      </section>
+    </section>
+
+    <footer class="footer-bar">
+      <p id="footer-stats">No run yet.</p>
+      <p class="footer-mode" id="footer-mode"></p>
+    </footer>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,100 @@
+/* App rules on top of the shared screen styles (assets/styles.css, copied from the Figma screens). */
+
+/* The screens are fixed 1440 x 900 frames; the app scrolls and works from 1280 px wide. */
+body { width: auto; height: auto; min-width: 1280px; overflow: auto; }
+.app { height: auto; min-height: 100vh; }
+.nav { position: sticky; top: 0; height: 100vh; }
+.main { min-height: 100vh; }
+.content { overflow: visible; align-items: start; }
+.cols-main-rail { grid-template-columns: minmax(0, 1fr) 320px; }
+[hidden] { display: none !important; }
+
+/* Top bar mode switch */
+.topbar-right { display: flex; align-items: center; gap: 24px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius-s); padding: 2px; background: var(--canvas); }
+.seg button { font: 500 13px/18px 'Inter', sans-serif; border: 0; background: none; color: var(--slate); padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+.seg button[aria-checked="true"] { background: var(--white); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(17, 27, 49, .08); }
+.seg button:disabled { cursor: default; opacity: .7; }
+.seg button:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+
+/* Stepper failure state */
+.step.failed .dot { background: var(--red); border-color: var(--red); color: var(--white); box-shadow: 0 0 0 4px var(--red-50); }
+
+/* Start form */
+.start { display: flex; flex-direction: column; gap: 16px; }
+input.input { width: 100%; font: 400 14px/20px 'Inter', sans-serif; outline: none; }
+input.input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-50); }
+input.input[readonly] { background: var(--canvas); color: var(--slate); }
+.key-row { display: flex; gap: 10px; }
+.btn:disabled { opacity: .55; cursor: default; }
+.btn-primary:disabled:hover { background: var(--blue); }
+.status-line { font-size: 13px; color: var(--slate); }
+
+/* Notes */
+.disclaimer { align-items: center; }
+.note-red { background: var(--red-50); color: #7F1D1D; }
+.note .hint-line { margin-top: 4px; opacity: .85; }
+.note p + p { margin-top: 4px; }
+
+/* Sections */
+.section-head h2 { font-size: 20px; line-height: 28px; }
+.section-head p { margin-top: 4px; font-size: 13px; max-width: 720px; }
+.small { font-size: 13px; color: var(--slate); }
+.muted-note { margin-top: 10px; }
+.empty { padding: 16px 22px; font-size: 13px; color: var(--slate); }
+.panel h3 + * { margin-top: 10px; }
+
+/* Plan */
+.plan-table .src-path { font-size: 12px; color: var(--ink); overflow-wrap: anywhere; }
+.endpoints { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.endpoints li { display: grid; grid-template-columns: auto auto 1fr; gap: 10px; align-items: baseline; font-size: 13px; }
+.endpoints .why { color: var(--slate); }
+.badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+
+/* Ladder: failure and "later" rungs */
+.ladder li.fail .node { background: var(--red); border-color: var(--red); }
+.ladder li.fail .name { color: var(--red); }
+.ladder li.later .name { color: var(--slate-2); }
+.ladder li.later .what { color: var(--slate-2); }
+.ladder .what { overflow-wrap: anywhere; }
+
+/* Attempts */
+.attempts { list-style: none; display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: var(--slate); }
+.attempts b { color: var(--ink); }
+.attempts li.bad b { color: var(--red); }
+.attempts li.ok b { color: var(--green); }
+
+/* Results */
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.stat p { font-size: 13px; }
+.stat.warn { border-color: #D7DBE6; }
+.tabs-panel { overflow: hidden; }
+.tab { background: none; border-top: 0; border-left: 0; border-right: 0; font-family: 'Inter', sans-serif; cursor: pointer; }
+.tab:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+.tab-file { margin-left: auto; align-self: center; font-size: 13px; color: var(--slate-2); }
+.tab-body { max-height: 560px; overflow: auto; }
+.tab-body thead th { position: sticky; top: 0; z-index: 1; }
+.data-table tr.inactive td { color: var(--slate); }
+.log-table td { white-space: nowrap; }
+
+/* Code: wrap long lines instead of clipping, keep citations in the right gutter */
+.code { border-radius: 0; overflow: visible; min-height: 100%; }
+.code .ln { grid-template-columns: 44px minmax(0, 1fr) minmax(120px, 220px); column-gap: 12px; }
+.code .c { white-space: pre-wrap; overflow-wrap: anywhere; }
+.code .src { white-space: normal; }
+.code .src span { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: top; }
+.code .ln.cited { background: rgba(33, 69, 255, .10); }
+.tab-body[data-pane="code"] { background: #0A1240; }
+
+.footer-bar { position: sticky; bottom: 0; }
+.footer-mode { color: var(--slate-2); }
+
+/* Layout fixes after the first headless pass */
+.results { grid-column: 1 / -1; }
+.ladder .name { flex-wrap: wrap; justify-content: flex-start; column-gap: 8px; row-gap: 2px; }
+.ladder .name .badge { margin-left: auto; }
+.plan-table td:nth-child(3) { white-space: nowrap; width: 1%; }
+.plan-table td:first-child, .plan-table td:nth-child(4) { white-space: nowrap; width: 1%; }
+.data-table td:nth-child(4), .data-table td:nth-child(5), .data-table td:nth-child(3) { white-space: nowrap; }
+.code .c { padding-left: 2ch; text-indent: -2ch; }
+.plan-table th { white-space: nowrap; }
