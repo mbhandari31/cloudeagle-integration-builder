@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- CSP. Scripts load only from this site ('self'), the inline import map (by hash) and blob:
+     modules. blob: is needed because the sandbox worker is started from a blob: URL (so it
+     inherits this policy) and compiles each connector as a blob: module instead of using eval;
+     blob: modules still run under this same policy. connect-src allows any https: origin because
+     the page fetches an OpenAPI spec from whatever URL you paste and calls api.anthropic.com;
+     inside the sandbox worker fetch/XHR/WebSocket/EventSource are deleted, so connector code
+     cannot use it. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' blob: 'sha256-xm0aip0+3lFWtbqVRQg4WPE7FBHc02VE+CloVSZsb1Q='; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>AI Integration Builder</title>
+<meta name="description" content="Prototype: point the builder at an OpenAPI spec, watch Claude plan and write a connector, and see CloudEagle's sandbox check it.">
+<script type="importmap">
+{
+  "imports": {
+    "@anthropic-ai/sdk": "./vendor/anthropic-sdk.js",
+    "js-yaml": "./vendor/js-yaml.js",
+    "sucrase": "./vendor/sucrase.js"
+  }
+}
+</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 rx=%274%27 fill=%27%232145FF%27/%3E%3Cpath d=%27M3 11 8 5l5 6%27 stroke=%27white%27 stroke-width=%272%27 fill=%27none%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Poppins:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/app.css">
+<script type="module" src="src/ui/app.js"></script>
+</head>
+<body>
+<div class="app">
+  <aside class="nav" aria-label="CloudEagle">
+    <div class="brand"><span class="brand-mark"><svg viewBox="0 0 16 16" fill="none"><path d="M2 11 8 4l6 7" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>CloudEagle</div>
+    <span class="nav-item">Overview</span>
+    <span class="nav-item">Applications <span class="count">412</span></span>
+    <span class="nav-item">Spend and licences</span>
+    <span class="nav-item">Renewals</span>
+    <span class="nav-item">Access reviews</span>
+    <span class="nav-item">AI governance</span>
+    <div class="nav-group">Settings</div>
+    <span class="nav-item active" aria-current="page">Integrations <span class="count">38</span></span>
+    <span class="nav-item">Users and roles</span>
+    <div class="nav-foot">Northwind Health (fictional)</div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="crumbs">Integrations / <b>New generated connector</b></div>
+      <div class="topbar-right">
+        <div class="who"><span>Priya Raman, IT admin</span><span class="avatar">PR</span></div>
+      </div>
+    </header>
+
+    <nav class="stepper" id="stepper" aria-label="Progress"></nav>
+
+    <section class="content cols-main-rail">
+      <div class="stack">
+        <div class="note note-blue disclaimer"><svg class="ico" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5m0-7.5v.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><p>Prototype: sandbox runs on synthetic data generated from the API spec. No real customer data is used.</p></div>
+
+        <div class="page-head">
+          <div>
+            <h1 id="title">Build a connector from API docs</h1>
+            <p id="subtitle">Point the builder at an OpenAPI spec. Claude plans the connector and writes it, then CloudEagle's runtime checks it before you see any data.</p>
+          </div>
+        </div>
+
+        <form class="panel panel-pad start" id="start-form" novalidate aria-labelledby="start-title">
+          <div class="start-head">
+            <h2 id="start-title">Start with your Anthropic API key</h2>
+            <p>A run makes 2–5 Claude calls and usually costs well under $1.</p>
+          </div>
+          <div class="field">
+            <label for="api-key">Anthropic API key</label>
+            <div class="key-row">
+              <input id="api-key" class="input" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your key">
+              <button type="button" class="btn btn-ghost" id="forget-key">Forget key</button>
+            </div>
+            <p class="hint">Your key stays in this tab and is sent only to api.anthropic.com. <a class="link" href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer">Get an API key</a></p>
+          </div>
+          <div class="field">
+            <label for="spec-url">API docs (OpenAPI URL)</label>
+            <input id="spec-url" class="input" type="url" spellcheck="false" autocomplete="off" value="https://developer.calendly.com/openapi/calendly-api.yaml">
+            <p class="hint" id="url-hint">Paste an OpenAPI 3 (JSON or YAML) URL</p>
+          </div>
+          <div class="actions">
+            <button type="submit" class="btn btn-primary" id="run-btn" disabled>Start</button>
+            <span class="status-line" id="status" role="status" aria-live="polite"></span>
+          </div>
+        </form>
+
+        <div id="error"></div>
+
+        <section class="stack" id="plan-section" hidden>
+          <div class="section-head">
+            <h2 id="plan-title">The plan</h2>
+            <p id="plan-sub"></p>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h2>Field mapping</h2><p id="plan-count"></p></div>
+            <div id="plan-table"></div>
+          </div>
+          <div id="limitations"></div>
+          <div class="panel panel-pad">
+            <h3>Endpoints the connector will call</h3>
+            <div id="endpoints"></div>
+          </div>
+        </section>
+
+      </div>
+
+      <aside class="stack rail">
+        <div class="panel">
+          <div class="panel-head"><h2>Safety checks</h2><span id="ladder-badge"></span></div>
+          <ol class="ladder" id="ladder"></ol>
+        </div>
+        <div class="panel panel-pad">
+          <h3>Attempts</h3>
+          <div id="attempts"></div>
+        </div>
+        <div class="panel panel-pad" id="scopes-panel" hidden>
+          <h3>Permissions we'll ask for</h3>
+          <div id="scopes"></div>
+        </div>
+      </aside>
+
+      <section class="stack results" id="results-section" hidden>
+        <div class="section-head">
+          <h2 id="results-title">What the connector returned</h2>
+          <p>From the practice run on generated data. Check that the people, roles and dates look right.</p>
+        </div>
+        <div class="stats" id="stat-cards"></div>
+        <div class="panel tabs-panel">
+          <div class="tabs" role="tablist">
+            <button type="button" class="tab on" role="tab" data-tab="data" aria-selected="true">Data preview</button>
+            <button type="button" class="tab" role="tab" data-tab="code" aria-selected="false">Code</button>
+            <button type="button" class="tab" role="tab" data-tab="log" aria-selected="false">Run log</button>
+            <span class="tab-file" id="code-file" hidden></span>
+          </div>
+          <div class="tab-body" data-pane="data" id="data-pane"></div>
+          <div class="tab-body" data-pane="code" hidden><div class="code" id="code-pane"></div></div>
+          <div class="tab-body" data-pane="log" id="log-pane" hidden></div>
+        </div>
+      </section>
+    </section>
+
+    <footer class="footer-bar">
+      <p id="footer-stats">No run yet.</p>
+      <p class="footer-mode" id="footer-mode"></p>
+    </footer>
+  </div>
+</div>
+</body>
+</html>
