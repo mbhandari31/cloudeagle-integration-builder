@@ -10,7 +10,7 @@ mkdir -p vendor
 # @anthropic-ai/sdk 1.4.0: the package's ESM entry ("exports".default = index.mjs); the
 # "browser" field swaps in its node.browser shims.
 $ESBUILD node_modules/@anthropic-ai/sdk/index.mjs $FLAGS --outfile=vendor/anthropic-sdk.js
-# js-yaml 4.1.0: its own ESM build.
+# js-yaml 4.3.2: its own ESM build.
 $ESBUILD node_modules/js-yaml/dist/js-yaml.mjs $FLAGS --outfile=vendor/js-yaml.js
 # sucrase 3.35.0: the ESM build ("module" field).
 $ESBUILD node_modules/sucrase/dist/esm/index.js $FLAGS --outfile=vendor/sucrase.js

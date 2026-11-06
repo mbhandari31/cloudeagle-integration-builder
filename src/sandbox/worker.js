@@ -27,7 +27,7 @@ function remove(name, root = self) {
 const BLOCKED = [
   "fetch", "XMLHttpRequest", "WebSocket", "WebSocketStream", "EventSource", "importScripts",
   "indexedDB", "WebTransport", "Worker", "SharedWorker", "BroadcastChannel", "caches",
-  "FontFace", "postMessage",
+  "FontFace", "Notification", "postMessage",
 ];
 for (const name of BLOCKED) remove(name);
 
@@ -43,13 +43,18 @@ for (const proto of codeCtors) {
   try { Object.defineProperty(proto, "constructor", { get: blockedCode, set: blockedCode, configurable: false }); } catch {}
 }
 remove("Function");
+// String timers are an eval path. Chrome keeps setTimeout/setInterval on
+// WorkerGlobalScope.prototype, so guard every object in self's chain that owns them.
 for (const name of ["setTimeout", "setInterval"]) {
-  const original = self[name].bind(self);
-  const guarded = (fn, ...rest) => {
+  const original = self[name];
+  const guarded = function (fn, ...rest) {
     if (typeof fn !== "function") throw new Error(BLOCKED_CODE);
-    return original(fn, ...rest);
+    return original.call(self, fn, ...rest);
   };
-  try { Object.defineProperty(self, name, { value: guarded, writable: false, configurable: false }); } catch {}
+  for (let o = self; o; o = Object.getPrototypeOf(o)) {
+    if (!Object.prototype.hasOwnProperty.call(o, name)) continue;
+    try { Object.defineProperty(o, name, { value: guarded, writable: false, configurable: false }); } catch {}
+  }
 }
 
 // Compiles the transpiled connector as a blob: module (allowed by script-src blob:),

