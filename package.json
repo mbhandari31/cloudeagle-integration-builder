@@ -1,0 +1,12 @@
+{
+  "name": "integration-builder-prototype",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node --test \"test/**/*.test.js\"" },
+  "dependencies": { "js-yaml": "4.1.0" },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "1.4.0",
+    "sucrase": "3.35.0"
+  }
+}
