@@ -5,7 +5,7 @@
 set -eu
 cd "$(dirname "$0")/.."
 ESBUILD="npx --yes esbuild@0.24.0"
-FLAGS="--bundle --format=esm --platform=browser --minify --legal-comments=eof"
+FLAGS="--bundle --format=esm --platform=browser --minify --keep-names --legal-comments=eof"
 mkdir -p vendor
 # @anthropic-ai/sdk 1.4.0: the package's ESM entry ("exports".default = index.mjs); the
 # "browser" field swaps in its node.browser shims.
