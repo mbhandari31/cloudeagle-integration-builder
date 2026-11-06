@@ -47,8 +47,8 @@ for (const [rule, code] of cases) {
 }
 
 test("comments and strings are ignored by code rules", () => {
-  assert.deepEqual(rules('// fetch(x)\n/* eval(y) */ const s = "fetch( window. eval(";'), []);
-  assert.deepEqual(rules("const s = `process. ${1}`;"), []);
+  assert.deepEqual(rules('// http.post(x)\n/* apiKey */ const s = "http.post( apiKey";'), []);
+  assert.deepEqual(rules("const s = `http.post( ${1}`;"), []);
 });
 
 test("allowed host and token property reads pass", () => {
@@ -79,4 +79,11 @@ test("regex literals cannot hide code", () => {
 
 test("arrow function parameter named token is clean", () => {
   assert.deepEqual(rules("const o = { next: token => token.next };"), []);
+});
+
+test("dangerous rules fail closed on raw source (division misread as regex)", () => {
+  for (const c of ["let i=0; i++ / 2; fetch(x) / 3;", "let i=0; i-- / 2; fetch(x) / 3;", "let y = {}/1; fetch(x)/1;"]) {
+    assert.ok(rules(c).includes("network-global"), c);
+  }
+  assert.equal(staticCheck("fetch(1)", opts).issues.length, 1, "deduped by rule+line");
 });

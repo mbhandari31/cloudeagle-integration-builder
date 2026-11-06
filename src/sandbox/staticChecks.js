@@ -72,6 +72,8 @@ function regexAllowed(code) {
   return !!w && /^(return|typeof|case|do|else|in|of|instanceof|new|delete|void|throw|yield|await)$/.test(w[0]);
 }
 
+const RAW_RULES = new Set(["network-global", "escape", "dynamic-import"]);
+
 const CODE_RULES = [
   ["network-global", /(?<![.\w$])fetch\s*\(|\bXMLHttpRequest\b|\bWebSocket\b|\bEventSource\b|\bimportScripts\b|\bnavigator\s*\.\s*sendBeacon\b/g, "Direct network access is not allowed; use the SDK http helper"],
   ["escape", /\bglobalThis\b|(?<![.\w$])self\s*\.|(?<![.\w$])window\s*\.|(?<![.\w$])eval\s*\(|(?<![.\w$])Function\s*\(|\.\s*constructor\b|(?<![.\w$])process\s*\.|(?<![.\w$])require\s*\(/g, "Access to globals or the sandbox boundary is not allowed"],
@@ -90,9 +92,19 @@ export function staticCheck(code, { allowedHost } = {}) {
   const issues = [];
   const add = (rule, idx, message) => issues.push({ rule, line: lineAt(idx), message });
 
+  const seen = new Set();
   for (const [rule, re, message] of CODE_RULES) {
     for (const m of clean.matchAll(re)) add(rule, m.index, `${message}: ${m[0].trim()}`);
+    // Fail closed: dangerous rules also run on the raw source, so a scanner
+    // mis-parse (e.g. division read as a regex) can never hide them.
+    if (RAW_RULES.has(rule)) {
+      for (const m of code.matchAll(re)) add(rule, m.index, `${message}: ${m[0].trim()}`);
+    }
   }
+  issues.splice(0, issues.length, ...issues.filter((i) => {
+    const key = `${i.rule}:${i.line}`;
+    return seen.has(key) ? false : (seen.add(key), true);
+  }));
 
   // Import specifiers: find `import ... from "x"` / `import "x"` / `export ... from "x"`.
   for (const m of clean.matchAll(/\b(?:import|export)\b(?!\s*\()[^;]*?(?:\bfrom\s*|\bimport\s*)(["'])/g)) {
