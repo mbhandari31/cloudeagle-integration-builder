@@ -3,15 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'sha256-brkzkCD4b44b9JQz7pXVa4SZ7gqjN6qF8W8IObPZyOY='; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.anthropic.com https:; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<!-- CSP. Scripts load only from this site ('self'), the inline import map (by hash) and blob:
+     modules. blob: is needed because the sandbox worker is started from a blob: URL (so it
+     inherits this policy) and compiles each connector as a blob: module instead of using eval;
+     blob: modules still run under this same policy. connect-src allows any https: origin because
+     Live mode fetches an OpenAPI spec from whatever URL you paste and calls api.anthropic.com;
+     inside the sandbox worker fetch/XHR/WebSocket/EventSource are deleted, so connector code
+     cannot use it. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' blob: 'sha256-xm0aip0+3lFWtbqVRQg4WPE7FBHc02VE+CloVSZsb1Q='; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>AI Integration Builder</title>
 <meta name="description" content="Prototype: point the builder at an OpenAPI spec, watch Claude plan and write a connector, and see CloudEagle's sandbox check it.">
 <script type="importmap">
 {
   "imports": {
-    "@anthropic-ai/sdk": "https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@1.4.0/+esm",
-    "js-yaml": "https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/+esm",
-    "sucrase": "https://cdn.jsdelivr.net/npm/sucrase@3.35.0/+esm"
+    "@anthropic-ai/sdk": "./vendor/anthropic-sdk.js",
+    "js-yaml": "./vendor/js-yaml.js",
+    "sucrase": "./vendor/sucrase.js"
   }
 }
 </script>

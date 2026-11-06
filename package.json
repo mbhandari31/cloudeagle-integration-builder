@@ -5,11 +5,16 @@
   "type": "module",
   "scripts": {
     "test": "node --test \"test/**/*.test.js\"",
-    "record": "node scripts/record.mjs"
+    "record": "node scripts/record.mjs",
+    "check:browser": "node scripts/check-browser-sandbox.mjs",
+    "vendor": "sh scripts/vendor.sh"
   },
-  "dependencies": { "js-yaml": "4.1.0" },
+  "dependencies": {
+    "js-yaml": "4.1.0"
+  },
   "devDependencies": {
     "@anthropic-ai/sdk": "1.4.0",
+    "puppeteer-core": "25.16.0",
     "sucrase": "3.35.0"
   }
 }

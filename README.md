@@ -23,14 +23,22 @@ The page shows each step as it happens: the plan with citations, the safety ladd
 
 What is enforced, and where:
 
-- **Static checks** (`src/sandbox/staticChecks.js`) run on the main thread before any code executes.
+- **Static checks** (`src/sandbox/staticChecks.js`) run on the main thread before any code executes. They are an early warning that gives the repair loop a precise error; they are pattern-based and can be beaten (string concatenation, comments in odd places), so they are not the boundary.
 - **The SDK** (`src/sandbox/sdk.js`) only allows GET requests to the planned vendor host, and caps pages and records.
-- **In the browser**, the connector runs in a module Web Worker (`src/sandbox/worker.js`). Before the connector is compiled, the worker deletes `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, `importScripts` and other network-capable globals, and hides `postMessage` so connector code can't message the page directly. Dynamic `import()` is syntax and can't be deleted; only the static scan blocks it.
+- **In the browser**, the connector runs in a module Web Worker (`src/sandbox/worker.js`):
+  - The worker is started from a `blob:` URL (a one-line module that imports `worker.js`), so it inherits the page's Content Security Policy. A same-origin worker URL would not: GitHub Pages sends no CSP header, and a `<meta>` CSP covers only the page.
+  - Under that policy, script loading is limited to this site and `blob:` (`script-src 'self' blob:`), with no `'unsafe-eval'`. So `import("https://elsewhere…")`, `eval`, `new Function` and string timers are refused by the browser inside the worker.
+  - `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, `importScripts`, `WebTransport`, `BroadcastChannel`, nested workers, `caches`, `indexedDB` and `postMessage` are deleted before connector code is loaded. `connect-src` allows any `https:` origin (Live mode reads the spec URL you paste), so the worker relies on these deletions, not on the CSP, for fetch-style requests.
+  - The connector is compiled without eval: its transpiled code is wrapped in a function and loaded as a `blob:` module. `blob:` modules run under the same policy.
+  - Dynamic code paths are also neutralised in the worker, as defence in depth: `eval` and `Function` are removed, `.constructor` on the function, async function, generator and async generator prototypes throws `Blocked: dynamic code`, `setTimeout`/`setInterval` reject strings, and `URL.createObjectURL` is removed so connector code can't mint its own modules.
+  - The worker accepts exactly one run message, so connector code can't start another run or hijack the listener. Sucrase also rewrites any `import()` in connector code into a call to the SDK's `require`, which rejects anything but `@cloudeagle/connector-sdk`.
 - **The main thread re-checks every request** the worker sends (GET only, https only, the planned host only) and answers it from the mock server. Nothing reaches the real vendor API.
-- **The Content Security Policy** in `index.html` covers the page only: scripts from this site and the jsdelivr CDN, workers from this site. A same-origin worker doesn't inherit the page's meta CSP, and GitHub Pages sends no CSP header, so the CSP does not restrict the worker.
+- **The page itself** loads scripts only from this site: the three libraries are vendored as single files in `vendor/` (no CDN).
 - **The model never sees a key**, and the page sends your key only to `api.anthropic.com`. It is kept in `sessionStorage` for this tab only.
 
-So the demo's boundary is the worker's deleted globals, the static scan and the main-thread request check. `runInNode` (`src/sandbox/runNode.js`) uses Node's `vm` module and is a trusted-developer runner for tests and recording only; `vm` is not a security boundary. A production runtime would run each connector in a network-isolated container, with an egress proxy that holds the credentials.
+`npm run check:browser` checks the browser boundary in headless Chrome (set `CHROME_PATH` if Chrome isn't in `/Applications`). It runs connectors that try known escapes (the function-constructor family reached through string concatenation, a comment-hidden `import()`, a string timer, `eval`, a self-made `blob:` module) straight through `runInBrowser`, skipping the static scan, and asserts that an "attacker" server on another port gets no requests. It also probes the worker's inherited policy directly and checks that the golden Calendly connector still passes.
+
+This is a prototype boundary, checked against the escapes we know of, not a proven one. `runInNode` (`src/sandbox/runNode.js`) uses Node's `vm` module and is a trusted-developer runner for tests and recording only; `vm` is not a security boundary. A production runtime would run each connector in a network-isolated container, with an egress proxy that holds the credentials.
 
 ## Run locally
 
@@ -40,6 +48,10 @@ npx http-server -p 8080 .
 ```
 
 Then open http://localhost:8080. Any static server works; the page must be served over http, not opened as a file. The layout targets desktop widths of 1280 px and up.
+
+### Vendored libraries
+
+The page has no build step, but it doesn't load code from a CDN either. `@anthropic-ai/sdk` 1.4.0, `js-yaml` 4.1.0 and `sucrase` 3.35.0 are committed as single-file ESM bundles in `vendor/`, and the import map in `index.html` points at them. To rebuild them from `node_modules` (after changing a pinned version), run `npm run vendor` (`scripts/vendor.sh`, esbuild 0.24.0). If you change the import map, recompute its `sha256-` hash in the page's CSP.
 
 ## Record a run
 

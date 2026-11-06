@@ -25,7 +25,7 @@ export async function executeConnector(js, { compile, sdkOptions, now = new Date
   const run = async () => {
     let fn;
     try {
-      fn = compile(js);
+      fn = await compile(js); // sync (Node vm) or async (browser blob module)
     } catch (e) {
       throw new StageError("compile", String(e?.message ?? e));
     }

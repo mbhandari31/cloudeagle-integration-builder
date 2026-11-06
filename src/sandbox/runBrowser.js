@@ -32,9 +32,16 @@ export function runInBrowser(tsCode, { spec, plan, now = new Date(), timeoutMs =
 
   return new Promise((resolve) => {
     let worker;
+    let bootUrl;
     try {
-      worker = new Worker(new URL("./worker.js", import.meta.url), { type: "module" });
+      // Start the worker from a blob: module that imports worker.js by absolute URL. A worker
+      // with a blob: URL inherits the page's Content-Security-Policy; a same-origin worker URL
+      // would not (GitHub Pages sends no CSP header, and a meta CSP covers only the page).
+      const workerUrl = new URL("./worker.js", import.meta.url).href;
+      bootUrl = URL.createObjectURL(new Blob([`import ${JSON.stringify(workerUrl)};\n`], { type: "text/javascript" }));
+      worker = new Worker(bootUrl, { type: "module" });
     } catch (e) {
+      if (bootUrl) URL.revokeObjectURL(bootUrl);
       return resolve(failed("runtime", `Sandbox worker failed to start: ${e?.message ?? e}`));
     }
     let done = false;
@@ -43,6 +50,7 @@ export function runInBrowser(tsCode, { spec, plan, now = new Date(), timeoutMs =
       done = true;
       clearTimeout(timer);
       worker.terminate();
+      URL.revokeObjectURL(bootUrl);
       resolve(result);
     };
     // Hard stop: also catches busy loops that never yield back to the worker's event loop.
@@ -65,6 +73,6 @@ export function runInBrowser(tsCode, { spec, plan, now = new Date(), timeoutMs =
     };
     worker.onmessageerror = () => finish(failed("runtime", "Sandbox worker sent a message that could not be read"));
 
-    worker.postMessage({ js, baseUrl: plan.baseUrl, allowedHost, now: +new Date(now), timeoutMs });
+    worker.postMessage({ type: "run", js, baseUrl: plan.baseUrl, allowedHost, now: +new Date(now), timeoutMs });
   });
 }
