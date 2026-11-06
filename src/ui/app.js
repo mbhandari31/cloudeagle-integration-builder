@@ -5,7 +5,9 @@ import { runInBrowser } from "../sandbox/runBrowser.js";
 import * as R from "./render.js";
 
 const CALENDLY_SPEC = "https://developer.calendly.com/openapi/calendly-api.yaml";
-const SPEC_SNAPSHOT = "fixtures/calendly-api.yaml"; // used only if the live spec can't be fetched in replay
+// Replay always reads the bundled snapshot of Calendly's spec (the one the run was recorded
+// against), so an edit to the live spec can't break the public demo.
+const SPEC_SNAPSHOT = "fixtures/calendly-api.yaml";
 const KEY_STORE = "ce-anthropic-key";
 const REPLAY_SPEED = 4;
 const URL_HINT = { replay: "Recorded run uses Calendly. Switch to Live to try another API.", live: "Paste an OpenAPI (JSON or YAML) URL" };
@@ -155,7 +157,8 @@ function showResults(result, now) {
   if (result.code) {
     ui.codePane.innerHTML = R.codeView(result.code);
   }
-  ui.logPane.innerHTML = R.runLog(result.run?.log);
+  const log = result.run?.log ?? [];
+  ui.logPane.innerHTML = R.runLog(specNote ? [{ t: 0, level: "warn", message: specNote }, ...log] : log);
   if (result.validation && result.run) {
     ui.stats.innerHTML = R.statCards(result.validation, result.run);
     ui.dataPane.innerHTML = R.dataTable(result.validation, now);
@@ -198,19 +201,34 @@ async function loadAnthropic() {
   return mod.default ?? mod.Anthropic;
 }
 
-// In replay, fetch the recorded spec URL; fall back to the bundled snapshot if Calendly is unreachable.
-async function replayFetch(url) {
+async function sha256Hex(text) {
+  if (!globalThis.crypto?.subtle) return null;
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// A run-log warning when the bundled spec isn't the one the recording was made with.
+let specNote = null;
+
+// In replay, always read the bundled snapshot (the URL field only shows where it came from).
+async function replayFetch() {
+  const res = await fetch(SPEC_SNAPSHOT);
+  if (!res.ok) return res;
+  const text = await res.text();
   try {
-    const res = await fetch(url);
-    if (res.ok) return res;
+    const want = recording?.specSha256;
+    const got = want ? await sha256Hex(text) : null;
+    if (!want) specNote = "Note: this recording has no spec hash, so the bundled spec can't be confirmed to match it.";
+    else if (got && got !== want) specNote = `Warning: the bundled spec (${SPEC_SNAPSHOT}) differs from the one this run was recorded with; the replay may not match.`;
   } catch {}
-  return fetch(SPEC_SNAPSHOT);
+  return { ok: true, status: 200, text: async () => text };
 }
 
 async function start(ev) {
   ev?.preventDefault();
   if (running) return;
   resetState();
+  specNote = null;
   const live = mode === "live";
   const specUrl = ui.url.value.trim();
   let ai;

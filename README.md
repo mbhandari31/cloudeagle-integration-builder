@@ -62,7 +62,9 @@ export ANTHROPIC_API_KEY=…
 npm run record
 ```
 
-The script reads the key from the environment only, runs the full pipeline against Calendly's spec, and refuses to write the file if it contains anything that looks like a key. The recording keeps each request's model, system prompt and messages, and each full response.
+The script reads the key from the environment only, runs the full pipeline against the committed snapshot of Calendly's spec (`fixtures/calendly-api.yaml`), and refuses to write the file if it contains anything that looks like a key. The recording keeps each request's model, system prompt and messages, and each full response.
+
+The recording stores the official spec URL (shown in the page), `specSource` and a `specSha256` of the snapshot. Replay always reads the same snapshot, never the live spec, so a change to Calendly's published spec can't break the recorded demo; if the snapshot's hash doesn't match the recording, the run log shows a warning. Refresh the snapshot and re-record together.
 
 If the file is missing, the page says so and points you to Live mode.
 

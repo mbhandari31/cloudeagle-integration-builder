@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -33,11 +34,13 @@ test("record writes a clean recording for a passing run", async () => {
   const outPath = join(dir, "nested", "calendly.json");
   const lines = [];
   const apiKey = "fake-key-for-test-0000";
+  // The recording must not depend on the network: the live spec is never fetched.
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () => { throw new Error("record() must not fetch"); };
   const { result } = await record({
     apiKey, Anthropic: FakeAnthropic, now: new Date("2026-11-06T00:00:00Z"), outPath,
-    fetchImpl: async () => ({ ok: true, text: async () => yaml }),
     log: (l) => lines.push(l),
-  });
+  }).finally(() => { globalThis.fetch = realFetch; });
   assert.equal(result.status, "passed");
   const text = await readFile(outPath, "utf8");
   const rec = JSON.parse(text);
@@ -45,9 +48,13 @@ test("record writes a clean recording for a passing run", async () => {
   assert.equal(rec.calls.length, 2);
   assert.equal(rec.result.stats.users, 48);
   assert.equal(rec.recordedAt, "2026-11-06T00:00:00.000Z");
+  // Recorded against the committed snapshot (what replay reads), with its hash.
+  assert.equal(rec.specUrl, "https://developer.calendly.com/openapi/calendly-api.yaml");
+  assert.equal(rec.specSource, "fixtures/calendly-api.yaml");
+  assert.equal(rec.specSha256, createHash("sha256").update(yaml, "utf8").digest("hex"));
   assert.ok(!text.includes('"apiKey"'));
   assert.ok(!text.includes(apiKey));
   assert.deepEqual(Object.keys(rec.calls[0].request), ["model", "system", "messages"]);
-  assert.ok(lines.some((l) => l.startsWith("[read] pass — ")));
+  assert.ok(lines.includes("[read] pass — Found Calendly API: 65 endpoints"));
   assert.ok(lines.includes("attempt 1"));
 });
