@@ -185,3 +185,25 @@ test("validate: unknown usage emails are a warning up to 10%, an error above", (
   assert.equal(two.ok, false);
   assert.ok(two.errors.includes("Usage refers to 2 emails that are not users"));
 });
+
+test("a connector yielding past 5000 records directly hits the per-stream cap promptly", async () => {
+  const t0 = Date.now();
+  const { result } = await run(connector(`async *users() { for (let i = 0; i < 10000; i++) yield { email: "u" + i + "@x.co" }; }`));
+  assert.deepEqual(result.error, { kind: "limit", message: "Stopped after 5000 records of users" });
+  assert.equal(result.users.length, 5000);
+  assert.ok(Date.now() - t0 < 2000);
+});
+
+test("the usage stream has its own cap", async () => {
+  const { result } = await run(connector(
+    `async *users() { yield { email: "a@b.co" }; }`,
+    `async *usage() { while (true) yield { email: "a@b.co", at: "2026-11-01T00:00:00Z" }; }`,
+  ), { timeoutMs: 50 });
+  assert.deepEqual(result.error, { kind: "limit", message: "Stopped after 5000 records of usage" });
+  assert.equal(result.usage.length, 5000);
+});
+
+test("an invalid baseUrl resolves with a compile error instead of rejecting", async () => {
+  const result = await runInNode(golden, { spec, plan: { baseUrl: "not a url" }, now });
+  assert.deepEqual(result, { users: [], usage: [], log: [], error: { kind: "compile", message: "Invalid baseUrl: not a url" } });
+});

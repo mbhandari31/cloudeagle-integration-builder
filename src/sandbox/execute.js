@@ -41,8 +41,16 @@ export async function executeConnector(js, { compile, sdkOptions, now = new Date
       throw new Error("Connector must export default defineConnector({ users, usage })");
     }
     const ctx = { since: new Date(+new Date(now) - 90 * DAY).toISOString(), state: {} };
-    for await (const u of connector.users(ctx)) users.push(u);
-    for await (const u of connector.usage(ctx)) usage.push(u);
+    // Per-stream cap: the SDK's maxRecords only covers a single paginate() call.
+    const maxRecords = sdkOptions?.limits?.maxRecords ?? 5000;
+    const drain = async (name, out) => {
+      for await (const rec of connector[name](ctx)) {
+        if (out.length >= maxRecords) throw new SandboxLimit(`Stopped after ${maxRecords} records of ${name}`);
+        out.push(rec);
+      }
+    };
+    await drain("users", users);
+    await drain("usage", usage);
   };
 
   let timer;

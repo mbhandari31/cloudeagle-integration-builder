@@ -13,10 +13,30 @@ export function runInBrowser(tsCode, { spec, plan, now = new Date(), timeoutMs =
   } catch (e) {
     return Promise.resolve(failed("compile", String(e?.message ?? e)));
   }
-  const transport = createMockTransport(spec, { now });
+  let allowedHost;
+  try {
+    allowedHost = new URL(plan?.baseUrl).host;
+  } catch {
+    return Promise.resolve(failed("compile", `Invalid baseUrl: ${plan?.baseUrl}`));
+  }
+  const mock = createMockTransport(spec, { now });
+  // Re-check every request: the worker is untrusted even though its SDK checks too.
+  const transport = async ({ method, url }) => {
+    let u;
+    try { u = new URL(url); } catch {}
+    if (String(method).toUpperCase() !== "GET" || u?.protocol !== "https:" || u.host !== allowedHost) {
+      return { status: 403, json: { error: "Blocked by CloudEagle runtime" } };
+    }
+    return mock({ method, url });
+  };
 
   return new Promise((resolve) => {
-    const worker = new Worker(new URL("./worker.js", import.meta.url), { type: "module" });
+    let worker;
+    try {
+      worker = new Worker(new URL("./worker.js", import.meta.url), { type: "module" });
+    } catch (e) {
+      return resolve(failed("runtime", `Sandbox worker failed to start: ${e?.message ?? e}`));
+    }
     let done = false;
     const finish = (result) => {
       if (done) return;
@@ -43,7 +63,8 @@ export function runInBrowser(tsCode, { spec, plan, now = new Date(), timeoutMs =
       e.preventDefault?.();
       finish(failed("runtime", e.message || "Sandbox worker failed to start"));
     };
+    worker.onmessageerror = () => finish(failed("runtime", "Sandbox worker sent a message that could not be read"));
 
-    worker.postMessage({ js, baseUrl: plan.baseUrl, allowedHost: new URL(plan.baseUrl).host, now: +new Date(now), timeoutMs });
+    worker.postMessage({ js, baseUrl: plan.baseUrl, allowedHost, now: +new Date(now), timeoutMs });
   });
 }

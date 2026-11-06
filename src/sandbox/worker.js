@@ -1,14 +1,20 @@
 // Module Worker that runs one connector. Relative imports only (no import map in workers).
 import { executeConnector } from "./execute.js";
 
-// Network-capable globals are removed before any connector code is compiled.
-const BLOCKED = ["fetch", "XMLHttpRequest", "WebSocket", "EventSource", "importScripts", "indexedDB", "WebTransport", "Worker"];
+// Captured before lockdown: connector code must not be able to message the main thread.
+const post = self.postMessage.bind(self);
+
+// Network-capable globals (and postMessage) are removed before any connector code is compiled.
+const BLOCKED = [
+  "fetch", "XMLHttpRequest", "WebSocket", "EventSource", "importScripts", "indexedDB",
+  "WebTransport", "Worker", "caches", "FontFace", "postMessage",
+];
 for (const name of BLOCKED) {
-  try { delete self[name]; } catch {}
+  for (let o = self; o; o = Object.getPrototypeOf(o)) {
+    try { delete o[name]; } catch {}
+  }
   try { Object.defineProperty(self, name, { value: undefined, writable: false, configurable: false }); } catch {}
 }
-
-const post = self.postMessage.bind(self);
 const pending = new Map();
 let nextId = 0;
 
