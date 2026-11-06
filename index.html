@@ -7,7 +7,7 @@
      modules. blob: is needed because the sandbox worker is started from a blob: URL (so it
      inherits this policy) and compiles each connector as a blob: module instead of using eval;
      blob: modules still run under this same policy. connect-src allows any https: origin because
-     Live mode fetches an OpenAPI spec from whatever URL you paste and calls api.anthropic.com;
+     the page fetches an OpenAPI spec from whatever URL you paste and calls api.anthropic.com;
      inside the sandbox worker fetch/XHR/WebSocket/EventSource are deleted, so connector code
      cannot use it. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' blob: 'sha256-xm0aip0+3lFWtbqVRQg4WPE7FBHc02VE+CloVSZsb1Q='; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
@@ -49,10 +49,6 @@
     <header class="topbar">
       <div class="crumbs">Integrations / <b>New generated connector</b></div>
       <div class="topbar-right">
-        <div class="seg" role="radiogroup" aria-label="Mode">
-          <button type="button" role="radio" data-mode="replay" aria-checked="true">Recorded run</button>
-          <button type="button" role="radio" data-mode="live" aria-checked="false">Live with your key</button>
-        </div>
         <div class="who"><span>Priya Raman, IT admin</span><span class="avatar">PR</span></div>
       </div>
     </header>
@@ -70,24 +66,26 @@
           </div>
         </div>
 
-        <form class="panel panel-pad start" id="start-form" novalidate>
-          <div class="field">
-            <label for="spec-url">API docs (OpenAPI URL)</label>
-            <input id="spec-url" class="input" type="url" spellcheck="false" autocomplete="off">
-            <p class="hint" id="url-hint"></p>
+        <form class="panel panel-pad start" id="start-form" novalidate aria-labelledby="start-title">
+          <div class="start-head">
+            <h2 id="start-title">Start with your Anthropic API key</h2>
+            <p>A run makes 2–5 Claude calls and usually costs well under $1.</p>
           </div>
-          <div class="field live-only" hidden>
+          <div class="field">
             <label for="api-key">Anthropic API key</label>
             <div class="key-row">
               <input id="api-key" class="input" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your key">
               <button type="button" class="btn btn-ghost" id="forget-key">Forget key</button>
             </div>
-            <p class="hint">Your key stays in this tab and is sent only to api.anthropic.com.</p>
+            <p class="hint">Your key stays in this tab and is sent only to api.anthropic.com. <a class="link" href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer">Get an API key</a></p>
           </div>
-          <div id="replay-missing" class="note note-amber" hidden><p>Recorded run isn't available yet. Use Live with your own key.</p></div>
+          <div class="field">
+            <label for="spec-url">API docs (OpenAPI URL)</label>
+            <input id="spec-url" class="input" type="url" spellcheck="false" autocomplete="off" value="https://developer.calendly.com/openapi/calendly-api.yaml">
+            <p class="hint" id="url-hint">Paste an OpenAPI 3 (JSON or YAML) URL</p>
+          </div>
           <div class="actions">
-            <button type="submit" class="btn btn-primary" id="run-btn" disabled>Build connector</button>
-            <button type="button" class="btn btn-ghost" id="skip-btn" hidden>Skip waiting</button>
+            <button type="submit" class="btn btn-primary" id="run-btn" disabled>Start</button>
             <span class="status-line" id="status" role="status" aria-live="polite"></span>
           </div>
         </form>

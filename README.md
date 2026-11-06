@@ -2,7 +2,9 @@
 
 This is a working prototype of the AI Integration Builder described in the PRD for the CloudEagle Senior PM assignment ([PRD](https://claude.ai/artifact/VsLrz7UWDwvUViNByq2cF1)). You point it at an API's OpenAPI docs. Claude drafts a plan and writes a TypeScript connector, and a sandbox checks the connector before any data is shown.
 
-It is a static page with no server and no build step. By default it plays back a recorded real run against Calendly's API, so you don't need a key. In Live mode you paste your own Anthropic key and can try any OpenAPI URL. The sandbox always runs on synthetic data generated from the spec; no real customer data is used.
+It is a static page with no server and no build step. The hosted page runs live only: it opens on a start screen where you paste your own Anthropic API key, then it calls Claude with that key. The docs URL is prefilled with Calendly's OpenAPI spec and you can try any other OpenAPI 3 URL. Your key is kept in `sessionStorage` for this tab and sent only to `api.anthropic.com`. A run makes 2–5 Claude calls and usually costs well under $1. The sandbox always runs on synthetic data generated from the spec; no real customer data is used.
+
+After a run finishes, pass or fail, "Run again" reuses the key; the docs URL stays editable.
 
 ## How it works
 
@@ -40,7 +42,7 @@ What is enforced, and where:
 - **In the browser**, the connector runs in a module Web Worker (`src/sandbox/worker.js`):
   - The worker is started from a `blob:` URL (a one-line module that imports `worker.js`), so it inherits the page's Content Security Policy. A same-origin worker URL would not: GitHub Pages sends no CSP header, and a `<meta>` CSP covers only the page.
   - Under that policy, script loading is limited to this site and `blob:` (`script-src 'self' blob:`), with no `'unsafe-eval'`. So `import("https://elsewhere…")`, `eval` and `new Function` are refused by the browser inside the worker, and it also refuses to evaluate string timers.
-  - `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, `importScripts`, `WebTransport`, `BroadcastChannel`, nested workers, `caches`, `indexedDB`, `Notification` and `postMessage` are deleted before connector code is loaded. `connect-src` allows any `https:` origin (Live mode reads the spec URL you paste), so the worker relies on these deletions, not on the CSP, for fetch-style requests.
+  - `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, `importScripts`, `WebTransport`, `BroadcastChannel`, nested workers, `caches`, `indexedDB`, `Notification` and `postMessage` are deleted before connector code is loaded. `connect-src` allows any `https:` origin (the page reads the spec URL you paste), so the worker relies on these deletions, not on the CSP, for fetch-style requests.
   - The connector is compiled without eval: its transpiled code is wrapped in a function and loaded as a `blob:` module. `blob:` modules run under the same policy.
   - Dynamic code paths are also neutralised in the worker, as defence in depth: `eval` and `Function` are removed, `.constructor` on the function, async function, generator and async generator prototypes throws `Blocked: dynamic code`, string arguments to `setTimeout`/`setInterval` are rejected on the worker and its prototypes (CSP also refuses to evaluate them), and `URL.createObjectURL` is removed so connector code can't mint its own modules.
   - The worker accepts exactly one run message, so connector code can't start another run or hijack the listener. Sucrase also rewrites any `import()` in connector code into a call to the SDK's `require`, which rejects anything but `@cloudeagle/connector-sdk`.
@@ -67,20 +69,9 @@ Then open http://localhost:8080. Any static server works; the page must be serve
 
 The page has no build step, but it doesn't load code from a CDN either. `@anthropic-ai/sdk` 1.4.0, `js-yaml` 4.1.0 and `sucrase` 3.35.0 are committed as single-file ESM bundles in `vendor/`, and the import map in `index.html` points at them. To rebuild them from `node_modules` (after changing a pinned version), run `npm run vendor` (`scripts/vendor.sh`, esbuild 0.24.0). If you change the import map, recompute its `sha256-` hash in the page's CSP.
 
-## Record a run
+## Developer tools
 
-The recorded run in `recordings/calendly.json` is made once with a real key:
-
-```sh
-export ANTHROPIC_API_KEY=…
-npm run record
-```
-
-The script reads the key from the environment only, runs the full pipeline against the committed snapshot of Calendly's spec (`fixtures/calendly-api.yaml`), and refuses to write the file if it contains anything that looks like a key. The recording keeps each request's model, system prompt and messages, and each full response.
-
-The recording stores the official spec URL (shown in the page), `specSource` and a `specSha256` of the snapshot. Replay always reads the same snapshot, never the live spec, so a change to Calendly's published spec can't break the recorded demo; if the snapshot's hash doesn't match the recording, the run log shows a warning. Refresh the snapshot and re-record together.
-
-If the file is missing, the page says so and points you to Live mode.
+`npm run record` captures a run to `recordings/` for offline testing; the UI doesn't use it. It reads `ANTHROPIC_API_KEY` from the environment only, runs against the committed Calendly snapshot (`fixtures/calendly-api.yaml`), and refuses to write a file that contains anything that looks like a key. The AI client's replay mode (`src/ai/client.js`) can play such a file back in tests.
 
 ## Models and why
 
@@ -91,7 +82,7 @@ If the file is missing, the page says so and points you to Live mode.
 ## Limitations
 
 - The sandbox only ever sees synthetic data. There is no OAuth flow, no real vendor call, no shadow sync and no scheduling; the ladder shows the last two rungs as "Next, in production".
-- Live mode needs the spec URL to allow cross-origin requests (Calendly's does). Many docs sites don't, and then the page reports that it couldn't read the spec.
+- The spec URL must allow cross-origin requests (Calendly's does). Many docs sites don't, and then the page reports that it couldn't read the spec.
 - Mock data comes from the spec's schemas, so a connector can pass here and still meet surprises in a real API (undocumented fields, rate limits, odd pagination).
 - The static scan is pattern-based and deliberately strict; it can reject harmless code, which the repair loop then rewrites.
 - Calling the Anthropic API from the browser exposes your key to this page's JavaScript. Use a key you can revoke.

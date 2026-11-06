@@ -1,23 +1,18 @@
-// Page controller: mode switch, key handling, running the pipeline, progressive rendering.
+// Page controller: key-first start screen, key handling, running the pipeline, progressive rendering.
 import { runPipeline } from "../pipeline.js";
 import { createAiClient } from "../ai/client.js";
 import { runInBrowser } from "../sandbox/runBrowser.js";
 import * as R from "./render.js";
 
-const CALENDLY_SPEC = "https://developer.calendly.com/openapi/calendly-api.yaml";
-// Replay always reads the bundled snapshot of Calendly's spec (the one the run was recorded
-// against), so an edit to the live spec can't break the public demo.
-const SPEC_SNAPSHOT = "fixtures/calendly-api.yaml";
 const KEY_STORE = "ce-anthropic-key";
-const REPLAY_SPEED = 4;
-const URL_HINT = { replay: "Recorded run uses Calendly. Switch to Live to try another API.", live: "Paste an OpenAPI (JSON or YAML) URL" };
+const URL_HINT = "Paste an OpenAPI 3 (JSON or YAML) URL";
 
 const SUBTITLE = document.getElementById("subtitle").textContent;
 const $ = (id) => document.getElementById(id);
 const ui = {
   form: $("start-form"), url: $("spec-url"), urlHint: $("url-hint"), key: $("api-key"),
-  forget: $("forget-key"), run: $("run-btn"), skip: $("skip-btn"), status: $("status"),
-  missing: $("replay-missing"), error: $("error"), stepper: $("stepper"),
+  forget: $("forget-key"), run: $("run-btn"), status: $("status"),
+  error: $("error"), stepper: $("stepper"),
   title: $("title"), subtitle: $("subtitle"),
   planSection: $("plan-section"), planTitle: $("plan-title"), planSub: $("plan-sub"),
   planCount: $("plan-count"), planTable: $("plan-table"), limitations: $("limitations"), endpoints: $("endpoints"),
@@ -32,32 +27,20 @@ const session = {
   set: (v) => { try { v ? sessionStorage.setItem(KEY_STORE, v) : sessionStorage.removeItem(KEY_STORE); } catch {} },
 };
 
-let mode = "replay";
-let recording = null; // null = not loaded yet, false = missing
 let running = false;
-let skipWaiting = null; // resolves pending replay delays when "Skip waiting" is pressed
+let ranOnce = false;
 
-// ---------- Mode ----------
-function setMode(next) {
-  if (running) return;
-  mode = next;
-  for (const b of document.querySelectorAll(".seg button")) b.setAttribute("aria-checked", String(b.dataset.mode === mode));
-  const live = mode === "live";
-  document.querySelector(".live-only").hidden = !live;
-  ui.url.readOnly = !live;
-  ui.url.value = live ? (ui.url.dataset.live || CALENDLY_SPEC) : (recording?.specUrl || CALENDLY_SPEC);
-  ui.urlHint.textContent = URL_HINT[mode];
-  ui.missing.hidden = live || recording !== false;
-  ui.run.disabled = !live && !recording;
-  ui.run.textContent = live ? "Build connector" : "Play recorded run";
-  ui.footerMode.textContent = live ? "Live: calls Claude with your key" : recording ? `Recorded run from ${new Date(recording.recordedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}` : "";
+// ---------- Start form ----------
+// Start needs a key; the spec URL stays editable between runs.
+function syncStart() {
+  ui.run.disabled = running || !ui.key.value.trim();
+  ui.run.textContent = ranOnce ? "Run again" : "Start";
 }
 
-for (const b of document.querySelectorAll(".seg button")) b.addEventListener("click", () => setMode(b.dataset.mode));
-ui.url.addEventListener("input", () => { if (mode === "live") ui.url.dataset.live = ui.url.value; });
 ui.key.value = session.get();
-ui.key.addEventListener("input", () => session.set(ui.key.value.trim()));
-ui.forget.addEventListener("click", () => { session.set(""); ui.key.value = ""; ui.key.focus(); });
+ui.key.addEventListener("input", syncStart);
+ui.forget.addEventListener("click", () => { session.set(""); ui.key.value = ""; syncStart(); ui.key.focus(); });
+ui.footerMode.textContent = "Live: calls Claude with your key";
 
 // ---------- Tabs ----------
 for (const t of document.querySelectorAll(".tab[data-tab]")) {
@@ -158,7 +141,7 @@ function showResults(result, now) {
     ui.codePane.innerHTML = R.codeView(result.code);
   }
   const log = result.run?.log ?? [];
-  ui.logPane.innerHTML = R.runLog(specNote ? [{ t: 0, level: "warn", message: specNote }, ...log] : log);
+  ui.logPane.innerHTML = R.runLog(log);
   if (result.validation && result.run) {
     ui.stats.innerHTML = R.statCards(result.validation, result.run);
     ui.dataPane.innerHTML = R.dataTable(result.validation, now);
@@ -169,22 +152,12 @@ function showResults(result, now) {
   if (result.code || result.run) ui.results.hidden = false;
 }
 
-// Wraps the AI client: replay pacing with "Skip waiting", running token totals, the plan as soon as it exists.
-function instrument(ai, { calls = null } = {}) {
-  let i = 0;
+// Wraps the AI client: running token totals, models used, the plan as soon as it exists.
+function instrument(ai) {
   const wrap = (fn) => async (prompt) => {
-    if (calls) {
-      const ms = calls[i]?.ms ?? 0;
-      if (ms > 0 && skipWaiting) {
-        await new Promise((resolve) => {
-          const t = setTimeout(resolve, ms / REPLAY_SPEED);
-          skipWaiting.waiters.push(() => { clearTimeout(t); resolve(); });
-        });
-      }
-    }
     const res = await fn(prompt);
-    // Models that were actually called: the replayed call, or the live call the client just recorded.
-    const c = calls ? calls[i++] : ai.recorder?.calls?.at(-1);
+    // The model of the live call the client just recorded.
+    const c = ai.recorder?.calls?.at(-1);
     const model = c?.response?.model || c?.request?.model;
     if (model) st.models.add(model);
     st.tokensIn += res.usage?.input_tokens ?? 0;
@@ -201,71 +174,31 @@ async function loadAnthropic() {
   return mod.default ?? mod.Anthropic;
 }
 
-async function sha256Hex(text) {
-  if (!globalThis.crypto?.subtle) return null;
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
-  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-// A run-log warning when the bundled spec isn't the one the recording was made with.
-let specNote = null;
-
-// In replay, always read the bundled snapshot (the URL field only shows where it came from).
-async function replayFetch() {
-  const res = await fetch(SPEC_SNAPSHOT);
-  if (!res.ok) return res;
-  const text = await res.text();
-  try {
-    const want = recording?.specSha256;
-    const got = want ? await sha256Hex(text) : null;
-    if (!want) specNote = "Note: this recording has no spec hash, so the bundled spec can't be confirmed to match it.";
-    else if (got && got !== want) specNote = `Warning: the bundled spec (${SPEC_SNAPSHOT}) differs from the one this run was recorded with; the replay may not match.`;
-  } catch {}
-  return { ok: true, status: 200, text: async () => text };
-}
-
 async function start(ev) {
   ev?.preventDefault();
   if (running) return;
+  const apiKey = ui.key.value.trim();
+  if (!apiKey) { syncStart(); ui.key.focus(); return; }
+  session.set(apiKey);
   resetState();
-  specNote = null;
-  const live = mode === "live";
   const specUrl = ui.url.value.trim();
+  const now = new Date();
   let ai;
-  let now = new Date();
-  let fetchImpl;
   try {
-    if (live) {
-      const apiKey = ui.key.value.trim();
-      // The spec read happens before any AI call, so a bad URL fails even without a key.
-      const Anthropic = apiKey ? await loadAnthropic() : class NoKey {
-        constructor() { const fail = async () => { throw new Error("Add your Anthropic API key to run live."); }; this.messages = { create: fail }; this.beta = { messages: { create: fail } }; }
-      };
-      ai = createAiClient({ mode: "live", apiKey, Anthropic });
-      fetchImpl = (u) => fetch(u);
-    } else {
-      // The client replays at full speed; instrument() paces it so "Skip waiting" can cut delays short.
-      ai = createAiClient({ mode: "replay", recording, speed: Infinity });
-      now = new Date(recording.recordedAt);
-      fetchImpl = replayFetch;
-    }
+    ai = createAiClient({ mode: "live", apiKey, Anthropic: await loadAnthropic() });
   } catch (e) {
     ui.error.innerHTML = R.errorNote({ failedStage: null, error: { message: e.message } });
     return;
   }
 
   running = true;
-  ui.run.disabled = true;
-  document.querySelectorAll(".seg button").forEach((b) => (b.disabled = true));
-  skipWaiting = live ? null : { waiters: [] };
-  ui.skip.hidden = live;
-  ui.skip.disabled = false;
-  const wrapped = instrument(ai, { calls: live ? null : recording.calls });
+  syncStart();
+  const wrapped = instrument(ai);
   st.ran = true;
   let result = { status: "failed" };
   try {
     try {
-      result = await runPipeline({ specUrl, ai: wrapped, runner: runInBrowser, now, fetchImpl }, onEvent);
+      result = await runPipeline({ specUrl, ai: wrapped, runner: runInBrowser, now, fetchImpl: (u) => fetch(u) }, onEvent);
     } catch (e) {
       result = { status: "failed", failedStage: null, error: { message: e.message } };
     }
@@ -274,10 +207,8 @@ async function start(ev) {
     ui.error.innerHTML = R.errorNote({ failedStage: null, error: { message: `Something went wrong showing the results: ${e?.message ?? e}` } });
   } finally {
     running = false;
-    skipWaiting = null;
-    ui.skip.hidden = true;
-    ui.run.disabled = false;
-    document.querySelectorAll(".seg button").forEach((b) => (b.disabled = false));
+    ranOnce = true;
+    syncStart();
     try { paint(); } catch {}
     document.body.dataset.run = result.status; // for scripted checks
   }
@@ -290,7 +221,7 @@ function renderOutcome(result, now) {
   if (result.status !== "passed") {
     st.failed = true;
     st.stoppedAt = (R.STAGE_NAMES[result.failedStage] || "an unexpected error").toLowerCase();
-    let hint = result.failedStage === "read" ? URL_HINT.live : null;
+    let hint = result.failedStage === "read" ? URL_HINT : null;
     const msg = String(result.error?.message ?? "");
     if (result.error?.status === 401 || result.error?.name === "AuthenticationError" || /^401\b/.test(msg)) {
       result = { ...result, error: { ...result.error, message: "Anthropic didn't accept this API key." } };
@@ -304,24 +235,7 @@ function renderOutcome(result, now) {
 }
 
 ui.form.addEventListener("submit", start);
-ui.skip.addEventListener("click", () => {
-  if (!skipWaiting) return;
-  skipWaiting.skip = true;
-  ui.skip.disabled = true;
-  // Infinity for the rest of the run: drop delays now and for every later call.
-  const flush = () => { const w = skipWaiting?.waiters.splice(0) || []; w.forEach((f) => f()); };
-  flush();
-  skipWaiting.waiters.push = (f) => { f(); return 0; };
-});
 
 // ---------- Boot ----------
 resetState();
-setMode("replay");
-fetch("recordings/calendly.json")
-  .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-  .then((rec) => {
-    if (!Array.isArray(rec?.calls)) throw new Error("Bad recording");
-    recording = rec;
-  })
-  .catch(() => { recording = false; })
-  .finally(() => { if (!running) setMode(mode); });
+syncStart();
