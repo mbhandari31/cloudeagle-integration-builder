@@ -86,18 +86,20 @@ export async function runPipeline(
     return fail("plan", { name: "PlanError", message: "The plan has no endpoints" });
   }
   const style = plan.pagination?.style ? `pagination ${plan.pagination.style}` : "no pagination";
+  let slicedSpec;
+  try {
+    slicedSpec = sliceSpec(spec, plan.endpoints.map((e) => ({ method: String(e?.method).toLowerCase(), path: e?.path })));
+  } catch (e) {
+    return fail("plan", errorOf(e));
+  }
   stage("plan", "pass", `Plan: ${plural(plan.endpoints.length, "endpoint")}, ${style}`);
-
-  const slicedSpec = sliceSpec(
-    spec,
-    plan.endpoints.map((e) => ({ method: String(e.method).toLowerCase(), path: e.path })),
-  );
 
   // 3. Generate, then check / run / validate; any failure goes back to the model as a repair.
   let code;
   let failure = null;
   for (let n = 1; n <= MAX_REPAIRS + 1; n++) {
     for (const s of LOOP_STAGES) ladder.delete(s);
+    result.code = null;
     result.run = null;
     result.validation = null;
     const genStage = n === 1 ? "generate" : "repair";
@@ -121,7 +123,7 @@ export async function runPipeline(
     } catch (e) {
       code = undefined;
       emit({ type: "attempt", n, code: null });
-      failure = { stage: "generate", message: e.message };
+      failure = { stage: "generate", message: e.message, details: [] };
       stage(genStage, "fail", `Attempt ${n}: ${e.message}`);
       if (genStage !== "generate") ladder.set("generate", { stage: "generate", status: "fail", detail: `Attempt ${n}: ${e.message}` });
       continue;
@@ -133,7 +135,12 @@ export async function runPipeline(
     if (genStage !== "generate") ladder.set("generate", { stage: "generate", status: "pass", detail: `Attempt ${n}: ${plural(lines, "line")} of TypeScript` });
 
     stage("static", "start", `Attempt ${n}: scanning the code`);
-    const check = staticCheck(code, { allowedHost });
+    let check;
+    try {
+      check = staticCheck(code, { allowedHost });
+    } catch (e) {
+      return fail("static", errorOf(e));
+    }
     if (!check.ok) {
       const list = check.issues.map((i) => `${i.rule}, line ${i.line}`).join("; ");
       const message = `Static check found ${plural(check.issues.length, "issue")}`;
@@ -144,7 +151,13 @@ export async function runPipeline(
     stage("static", "pass", `Attempt ${n}: no issues`);
 
     stage("mock", "start", `Attempt ${n}: running on mock data`);
-    const run = await runner(code, { spec, plan, now });
+    let run;
+    try {
+      run = await runner(code, { spec, plan, now });
+    } catch (e) {
+      run = { error: { kind: "runtime", message: errorOf(e).message } };
+    }
+    run = { ...run, users: run?.users ?? [], usage: run?.usage ?? [], log: run?.log ?? [], error: run?.error ?? null };
     result.run = run;
     if (run.error) {
       const message = `${run.error.kind} error: ${run.error.message}`;
@@ -155,7 +168,12 @@ export async function runPipeline(
     stage("mock", "pass", `${plural(run.users.length, "user")}, ${plural(run.usage.length, "usage event")} from mock data`);
 
     stage("validate", "start", "Checking the records");
-    const validation = validateRecords({ users: run.users, usage: run.usage }, { now });
+    let validation;
+    try {
+      validation = validateRecords({ users: run.users, usage: run.usage }, { now });
+    } catch (e) {
+      return fail("validate", errorOf(e));
+    }
     result.validation = validation;
     if (!validation.ok) {
       failure = { stage: "validate", message: validation.errors.join("; "), details: validation.errors };

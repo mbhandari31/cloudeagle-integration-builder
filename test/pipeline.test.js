@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { parseSpec } from "../src/spec/load.js";
 import { runInNode } from "../src/sandbox/runNode.js";
-import { PlanError } from "../src/ai/client.js";
+import { PlanError, AiRefusalError } from "../src/ai/client.js";
 import { runPipeline } from "../src/pipeline.js";
 
 const spec = parseSpec(readFileSync(new URL("../fixtures/calendly-api.yaml", import.meta.url), "utf8"));
@@ -42,9 +42,9 @@ function fakeAi({ triage = () => ({ plan: PLAN }), generate = [], repair = [] } 
   };
 }
 
-const run = async (ai) => {
+const run = async (ai, runner = runInNode) => {
   const events = [];
-  const result = await runPipeline({ spec, ai, runner: runInNode, now }, (e) => events.push(e));
+  const result = await runPipeline({ spec, ai, runner, now }, (e) => events.push(e));
   return { result, events };
 };
 
@@ -137,4 +137,89 @@ test("a spec URL that is not OpenAPI fails at the read stage", async () => {
   assert.equal(result.status, "failed");
   assert.equal(result.failedStage, "read");
   assert.equal(result.error.name, "SpecError");
+});
+
+const outcomes = (events) => events.filter((e) => e.type === "stage" && e.status !== "start").map((e) => `${e.stage}:${e.status}`);
+const allPass = [["read", "pass"], ["plan", "pass"], ["generate", "pass"], ["static", "pass"], ["mock", "pass"], ["validate", "pass"]];
+
+test("a mock-run failure (404) is fed back and repaired", async () => {
+  const bad = golden.replace('paginate("/scheduled_events"', 'paginate("/no_such_path"');
+  assert.notEqual(bad, golden);
+  const ai = fakeAi({ generate: [fenced(bad)], repair: [fenced(golden)] });
+  const { result, events } = await run(ai);
+  assert.equal(result.status, "passed");
+  assert.equal(result.attempts, 2);
+  assert.deepEqual(result.ladder.map((r) => [r.stage, r.status]), allPass);
+  assert.deepEqual(outcomes(events).slice(2, 5), ["generate:pass", "static:pass", "mock:fail"]);
+  assert.match(events.find((e) => e.stage === "mock" && e.status === "fail").detail, /404/);
+  const repairUser = ai.calls[2].prompt.user;
+  assert.match(repairUser, /failed at the "mock" stage/);
+  assert.match(repairUser, /"log"/);
+});
+
+test("a validation failure (users without email) is fed back and repaired", async () => {
+  const bad = golden.replace("email: m.user.email,", "email: null,");
+  assert.notEqual(bad, golden);
+  const ai = fakeAi({ generate: [fenced(bad)], repair: [fenced(golden)] });
+  const { result, events } = await run(ai);
+  assert.equal(result.status, "passed");
+  assert.equal(result.attempts, 2);
+  assert.equal(result.validation.stats.users, 48);
+  assert.ok(outcomes(events).includes("validate:fail"));
+  assert.match(ai.calls[2].prompt.user, /failed at the "validate" stage[\s\S]*48 users missing a valid email/);
+});
+
+test("a runner that rejects counts as a mock failure and is repaired", async () => {
+  let calls = 0;
+  const flaky = async (code, opts) => {
+    if (++calls === 1) throw new Error("Sandbox worker crashed");
+    return runInNode(code, opts);
+  };
+  const ai = fakeAi({ generate: [fenced(golden)], repair: [fenced(golden)] });
+  const { result, events } = await run(ai, flaky);
+  assert.equal(result.status, "passed");
+  assert.equal(result.attempts, 2);
+  assert.equal(calls, 2);
+  assert.match(events.find((e) => e.stage === "mock" && e.status === "fail").detail, /Sandbox worker crashed/);
+  assert.match(ai.calls[2].prompt.user, /failed at the "mock" stage[\s\S]*Sandbox worker crashed/);
+});
+
+test("a runner error result without log or records is handled", async () => {
+  const runner = async () => ({ error: { kind: "runtime", message: "no log" } });
+  const ai = fakeAi({ generate: [fenced(golden)], repair: [fenced(golden), fenced(golden), fenced(golden)] });
+  const { result, events } = await run(ai, runner);
+  assert.equal(result.status, "failed");
+  assert.equal(result.failedStage, "mock");
+  assert.equal(result.attempts, 4);
+  assert.deepEqual(result.run, { users: [], usage: [], log: [], error: { kind: "runtime", message: "no log" } });
+  assert.equal(events.at(-1).stage, "failed");
+});
+
+for (const [label, error] of [
+  ["a refusal", new AiRefusalError("Claude declined the request")],
+  ["a non-refusal error", new Error("socket hang up")],
+]) {
+  test(`${label} from ai.generate fails at the generate stage without throwing`, async () => {
+    const ai = fakeAi();
+    ai.generate = async () => { throw error; };
+    const { result, events } = await run(ai);
+    assert.equal(result.status, "failed");
+    assert.equal(result.failedStage, "generate");
+    assert.deepEqual(result.error, { name: error.name, message: error.message });
+    assert.equal(result.attempts, 1);
+    assert.equal(result.code, null);
+    assert.deepEqual(result.ladder.at(-1), { stage: "generate", status: "fail", detail: error.message });
+    assert.deepEqual(outcomes(events).slice(-2), ["generate:fail", "failed:fail"]);
+  });
+}
+
+test("code from an earlier attempt is not kept when the last reply has no code", async () => {
+  const prose = "Sorry, no code.";
+  const bad = golden.replace('paginate("/scheduled_events"', 'paginate("/no_such_path"');
+  const ai = fakeAi({ generate: [fenced(bad)], repair: [prose, prose, prose] });
+  const { result } = await run(ai);
+  assert.equal(result.status, "failed");
+  assert.equal(result.failedStage, "generate");
+  assert.equal(result.code, null);
+  assert.equal(result.run, null);
 });
