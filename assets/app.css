@@ -45,7 +45,7 @@ input.input[readonly] { background: var(--canvas); color: var(--slate); }
 .panel h3 + * { margin-top: 10px; }
 
 /* Plan */
-.plan-table .src-path { font-size: 12px; color: var(--ink); overflow-wrap: anywhere; }
+.plan-table .src-path { font-size: 12px; color: var(--ink); overflow-wrap: normal; word-break: normal; }
 .endpoints { list-style: none; display: flex; flex-direction: column; gap: 10px; }
 .endpoints li { display: grid; grid-template-columns: auto auto 1fr; gap: 10px; align-items: baseline; font-size: 13px; }
 .endpoints .why { color: var(--slate); }
@@ -94,7 +94,13 @@ input.input[readonly] { background: var(--canvas); color: var(--slate); }
 .ladder .name { flex-wrap: wrap; justify-content: flex-start; column-gap: 8px; row-gap: 2px; }
 .ladder .name .badge { margin-left: auto; }
 .plan-table td:nth-child(3) { white-space: nowrap; width: 1%; }
-.plan-table td:first-child, .plan-table td:nth-child(4) { white-space: nowrap; width: 1%; }
+.plan-table td:first-child { white-space: nowrap; width: 1%; }
+.plan-table td:nth-child(4) { white-space: nowrap; width: 250px; }
+.plan-table .cite { white-space: nowrap; }
 .data-table td:nth-child(4), .data-table td:nth-child(5), .data-table td:nth-child(3) { white-space: nowrap; }
 .code .c { padding-left: 2ch; text-indent: -2ch; }
 .plan-table th { white-space: nowrap; }
+.ladder .later-tag { margin-top: 4px; }
+/* Nav items are labels in this prototype, not links */
+.nav .nav-item { color: #C7CEF5; padding: 8px 10px; border-radius: var(--radius-s); font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
+.nav .nav-item.active { background: var(--navy-2); color: var(--white); box-shadow: inset 3px 0 0 var(--blue); }

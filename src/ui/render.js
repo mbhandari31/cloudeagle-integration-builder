@@ -36,6 +36,9 @@ function endpointLabel(endpoint, plan) {
   return hit ? `${String(hit.method).toUpperCase()} ${s}` : s;
 }
 
+// Lets long JSON paths wrap only after "." and "[]", never mid-word.
+const breakable = (s) => esc(s).replace(/(\.|\[\])/g, "$1<wbr>");
+
 export function planTable(plan) {
   const rows = plan.fieldMapping || [];
   if (!rows.length) return `<p class="empty">The plan has no field mapping.</p>`;
@@ -45,7 +48,7 @@ export function planTable(plan) {
       const [cls, label] = CONF[m.confidence] || ["b-grey", m.confidence || "Unknown"];
       return `<tr class="${m.confidence === "high" ? "" : "flag"}">
         <td><b>${esc(TARGETS[m.target] || m.target)}</b></td>
-        <td><span class="mono src-path">${esc(m.source)}</span>${m.note ? `<div class="sub">${esc(m.note)}</div>` : ""}</td>
+        <td><span class="mono src-path">${breakable(m.source)}</span>${m.note ? `<div class="sub">${esc(m.note)}</div>` : ""}</td>
         <td><span class="badge ${cls}">${esc(label)}</span></td>
         <td><span class="cite">${esc(endpointLabel(m.endpoint, plan))}</span></td>
       </tr>`;
@@ -101,7 +104,7 @@ export function ladder(state) {
     ["7-day shadow sync", "Full sync, kept out of reports"],
     ["Live", "Daily sync with health checks"],
   ].map(([name, what], i) => `<li class="wait later"><span class="node">${i + 4}</span><div class="body">
-      <div class="name">${name}<span class="badge b-grey">Next, in production</span></div>
+      <div class="name">${name}</div><div class="later-tag"><span class="badge b-grey">Next, in production</span></div>
       <div class="what">${what}</div></div></li>`);
   return live.concat(later).join("");
 }
@@ -199,7 +202,7 @@ export function runLog(log) {
 }
 
 // ---------- Errors ----------
-const STAGE_NAMES = { read: "Reading the docs", plan: "Planning", generate: "Generating code", static: "Code checks", mock: "Practice run", validate: "Schema check" };
+export const STAGE_NAMES = { read: "Reading the docs", plan: "Planning", generate: "Generating code", static: "Code checks", mock: "Practice run", validate: "Schema check" };
 
 export function errorNote(result, hint) {
   const where = STAGE_NAMES[result.failedStage] || result.failedStage || "Run";

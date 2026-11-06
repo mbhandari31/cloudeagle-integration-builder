@@ -7,7 +7,6 @@ import * as R from "./render.js";
 const CALENDLY_SPEC = "https://developer.calendly.com/openapi/calendly-api.yaml";
 const SPEC_SNAPSHOT = "fixtures/calendly-api.yaml"; // used only if the live spec can't be fetched in replay
 const KEY_STORE = "ce-anthropic-key";
-const LIVE_MODELS = ["claude-haiku-5-5", "claude-sonnet-5-5"];
 const REPLAY_SPEED = 4;
 const URL_HINT = { replay: "Recorded run uses Calendly. Switch to Live to try another API.", live: "Paste an OpenAPI (JSON or YAML) URL" };
 
@@ -66,6 +65,7 @@ for (const t of document.querySelectorAll(".tab[data-tab]")) {
       o.setAttribute("aria-selected", String(o === t));
     }
     for (const p of document.querySelectorAll(".tab-body")) p.hidden = p.dataset.pane !== t.dataset.tab;
+    ui.codeFile.hidden = t.dataset.tab !== "code";
   });
 }
 
@@ -77,6 +77,11 @@ function resetState() {
   ui.planSection.hidden = true;
   ui.results.hidden = true;
   ui.scopesPanel.hidden = true;
+  ui.codePane.innerHTML = "";
+  ui.logPane.innerHTML = "";
+  ui.stats.innerHTML = "";
+  ui.dataPane.innerHTML = "";
+  ui.codeFile.textContent = "";
   ui.title.textContent = "Build a connector from API docs";
   ui.subtitle.textContent = SUBTITLE;
   paint();
@@ -88,9 +93,11 @@ function paint() {
   ui.ladderBadge.innerHTML = R.ladderBadge(st.rungs);
   ui.attempts.innerHTML = R.attemptList(st.attempts, st.final);
   const models = [...st.models];
-  ui.footer.textContent = st.attempts.length || st.tokensIn
+  const stats = st.attempts.length || st.tokensIn
     ? `${st.attempts.length} ${st.attempts.length === 1 ? "attempt" : "attempts"} · tokens ${st.tokensIn.toLocaleString("en-US")} in / ${st.tokensOut.toLocaleString("en-US")} out${models.length ? ` · models: ${models.join(", ")}` : ""}`
-    : "No run yet.";
+    : "";
+  const stopped = st.stoppedAt ? `Last run stopped at ${st.stoppedAt}.` : "";
+  ui.footer.textContent = [stopped, stats].filter(Boolean).join(" ") || (st.ran ? "" : "No run yet.");
 }
 
 function showPlan(plan) {
@@ -165,9 +172,6 @@ function instrument(ai, { calls = null } = {}) {
   const wrap = (fn) => async (prompt) => {
     if (calls) {
       const ms = calls[i]?.ms ?? 0;
-      const m = calls[i]?.response?.model || calls[i]?.request?.model;
-      i++;
-      if (m) st.models.add(m);
       if (ms > 0 && skipWaiting) {
         await new Promise((resolve) => {
           const t = setTimeout(resolve, ms / REPLAY_SPEED);
@@ -176,6 +180,10 @@ function instrument(ai, { calls = null } = {}) {
       }
     }
     const res = await fn(prompt);
+    // Models that were actually called: the replayed call, or the live call the client just recorded.
+    const c = calls ? calls[i++] : ai.recorder?.calls?.at(-1);
+    const model = c?.response?.model || c?.request?.model;
+    if (model) st.models.add(model);
     st.tokensIn += res.usage?.input_tokens ?? 0;
     st.tokensOut += res.usage?.output_tokens ?? 0;
     if (res.plan) showPlan(res.plan);
@@ -216,7 +224,6 @@ async function start(ev) {
         constructor() { const fail = async () => { throw new Error("Add your Anthropic API key to run live."); }; this.messages = { create: fail }; this.beta = { messages: { create: fail } }; }
       };
       ai = createAiClient({ mode: "live", apiKey, Anthropic });
-      LIVE_MODELS.forEach((m) => st.models.add(m));
       fetchImpl = (u) => fetch(u);
     } else {
       // The client replays at full speed; instrument() paces it so "Skip waiting" can cut delays short.
@@ -236,18 +243,35 @@ async function start(ev) {
   ui.skip.hidden = live;
   ui.skip.disabled = false;
   const wrapped = instrument(ai, { calls: live ? null : recording.calls });
-  let result;
+  st.ran = true;
+  let result = { status: "failed" };
   try {
-    result = await runPipeline({ specUrl, ai: wrapped, runner: runInBrowser, now, fetchImpl }, onEvent);
+    try {
+      result = await runPipeline({ specUrl, ai: wrapped, runner: runInBrowser, now, fetchImpl }, onEvent);
+    } catch (e) {
+      result = { status: "failed", failedStage: null, error: { message: e.message } };
+    }
+    renderOutcome(result, now);
   } catch (e) {
-    result = { status: "failed", failedStage: null, error: { message: e.message } };
+    ui.error.innerHTML = R.errorNote({ failedStage: null, error: { message: `Something went wrong showing the results: ${e?.message ?? e}` } });
+  } finally {
+    running = false;
+    skipWaiting = null;
+    ui.skip.hidden = true;
+    ui.run.disabled = false;
+    document.querySelectorAll(".seg button").forEach((b) => (b.disabled = false));
+    try { paint(); } catch {}
+    document.body.dataset.run = result.status; // for scripted checks
   }
-  if (live) for (const c of ai.recorder?.calls || []) if (c.response?.model) st.models.add(c.response.model);
+}
+
+function renderOutcome(result, now) {
   st.final = result.status;
   if (result.plan && !st.plan) showPlan(result.plan);
   showResults(result, now);
   if (result.status !== "passed") {
     st.failed = true;
+    st.stoppedAt = (R.STAGE_NAMES[result.failedStage] || "an unexpected error").toLowerCase();
     let hint = result.failedStage === "read" ? URL_HINT.live : null;
     const msg = String(result.error?.message ?? "");
     if (result.error?.name === "AuthenticationError" || /^401\b/.test(msg)) {
@@ -259,13 +283,6 @@ async function start(ev) {
     ui.results.scrollIntoView({ behavior: "smooth", block: "start" });
     ui.status.textContent = `Connector passed after ${result.attempts} ${result.attempts === 1 ? "attempt" : "attempts"}.`;
   }
-  paint();
-  running = false;
-  skipWaiting = null;
-  ui.skip.hidden = true;
-  ui.run.disabled = false;
-  document.querySelectorAll(".seg button").forEach((b) => (b.disabled = false));
-  document.body.dataset.run = result.status; // for scripted checks
 }
 
 ui.form.addEventListener("submit", start);

@@ -26,15 +26,15 @@
 <div class="app">
   <aside class="nav" aria-label="CloudEagle">
     <div class="brand"><span class="brand-mark"><svg viewBox="0 0 16 16" fill="none"><path d="M2 11 8 4l6 7" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>CloudEagle</div>
-    <a href="#" aria-disabled="true">Overview</a>
-    <a href="#" aria-disabled="true">Applications <span class="count">412</span></a>
-    <a href="#" aria-disabled="true">Spend and licences</a>
-    <a href="#" aria-disabled="true">Renewals</a>
-    <a href="#" aria-disabled="true">Access reviews</a>
-    <a href="#" aria-disabled="true">AI governance</a>
+    <span class="nav-item">Overview</span>
+    <span class="nav-item">Applications <span class="count">412</span></span>
+    <span class="nav-item">Spend and licences</span>
+    <span class="nav-item">Renewals</span>
+    <span class="nav-item">Access reviews</span>
+    <span class="nav-item">AI governance</span>
     <div class="nav-group">Settings</div>
-    <a href="#" class="active" aria-current="page">Integrations <span class="count">38</span></a>
-    <a href="#" aria-disabled="true">Users and roles</a>
+    <span class="nav-item active" aria-current="page">Integrations <span class="count">38</span></span>
+    <span class="nav-item">Users and roles</span>
     <div class="nav-foot">Northwind Health (fictional)</div>
   </aside>
 
@@ -131,7 +131,7 @@
             <button type="button" class="tab on" role="tab" data-tab="data" aria-selected="true">Data preview</button>
             <button type="button" class="tab" role="tab" data-tab="code" aria-selected="false">Code</button>
             <button type="button" class="tab" role="tab" data-tab="log" aria-selected="false">Run log</button>
-            <span class="tab-file" id="code-file"></span>
+            <span class="tab-file" id="code-file" hidden></span>
           </div>
           <div class="tab-body" data-pane="data" id="data-pane"></div>
           <div class="tab-body" data-pane="code" hidden><div class="code" id="code-pane"></div></div>

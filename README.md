@@ -25,11 +25,12 @@ What is enforced, and where:
 
 - **Static checks** (`src/sandbox/staticChecks.js`) run on the main thread before any code executes.
 - **The SDK** (`src/sandbox/sdk.js`) only allows GET requests to the planned vendor host, and caps pages and records.
-- **In the browser**, the connector runs in a module Web Worker (`src/sandbox/worker.js`). The worker deletes `fetch`, `XMLHttpRequest`, `WebSocket`, `importScripts`, `postMessage` and other network-capable globals before the connector is compiled. Every request the worker makes is passed to the main thread, which checks it again (GET, https, planned host only) and answers it from the mock server. Nothing reaches the real vendor API.
-- **A Content Security Policy** in `index.html` limits scripts to this site and the jsdelivr CDN and workers to this site.
-- **The model never sees a key**, and the page never sends your key anywhere but `api.anthropic.com`. It is kept in `sessionStorage` for the tab only.
+- **In the browser**, the connector runs in a module Web Worker (`src/sandbox/worker.js`). Before the connector is compiled, the worker deletes `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, `importScripts` and other network-capable globals, and hides `postMessage` so connector code can't message the page directly. Dynamic `import()` is syntax and can't be deleted; only the static scan blocks it.
+- **The main thread re-checks every request** the worker sends (GET only, https only, the planned host only) and answers it from the mock server. Nothing reaches the real vendor API.
+- **The Content Security Policy** in `index.html` covers the page only: scripts from this site and the jsdelivr CDN, workers from this site. A same-origin worker doesn't inherit the page's meta CSP, and GitHub Pages sends no CSP header, so the CSP does not restrict the worker.
+- **The model never sees a key**, and the page sends your key only to `api.anthropic.com`. It is kept in `sessionStorage` for this tab only.
 
-The browser Worker, the main-thread request check and the CSP are this demo's boundary. `runInNode` (`src/sandbox/runNode.js`) uses Node's `vm` module and is a trusted-developer runner for tests and recording only; `vm` is not a security boundary. A production runtime would run each connector in a network-isolated container with an egress proxy that holds the credentials.
+So the demo's boundary is the worker's deleted globals, the static scan and the main-thread request check. `runInNode` (`src/sandbox/runNode.js`) uses Node's `vm` module and is a trusted-developer runner for tests and recording only; `vm` is not a security boundary. A production runtime would run each connector in a network-isolated container, with an egress proxy that holds the credentials.
 
 ## Run locally
 
@@ -38,7 +39,7 @@ npm install && npm test
 npx http-server -p 8080 .
 ```
 
-Then open http://localhost:8080. Any static server works; the page must be served over http, not opened as a file.
+Then open http://localhost:8080. Any static server works; the page must be served over http, not opened as a file. The layout targets desktop widths of 1280 px and up.
 
 ## Record a run
 
@@ -70,4 +71,4 @@ If the file is missing, the page says so and points you to Live mode.
 ## Related
 
 - PRD: https://claude.ai/artifact/VsLrz7UWDwvUViNByq2cF1
-- Approved screens: `figma-screens/` in the assignment folder (`01-start.html` to `06-live.html`, PNGs in `png/`). This page reuses their stylesheet as `assets/styles.css`.
+- Design screens are part of the assignment submission. This page reuses their stylesheet as `assets/styles.css`.
