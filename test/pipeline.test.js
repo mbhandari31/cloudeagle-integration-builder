@@ -123,6 +123,25 @@ test("(c) a plan error fails the run at the plan stage without throwing", async 
   assert.ok(events.some((e) => e.stage === "plan" && e.status === "fail"));
 });
 
+test("a plan whose endpoints are all missing from the spec fails at the plan stage", async () => {
+  const plan = { ...PLAN, endpoints: [{ purpose: "users", method: "GET", path: "/no_such_path", why: "x" }] };
+  const ai = fakeAi({ triage: () => ({ plan }) });
+  const { result, events } = await run(ai);
+  assert.equal(result.status, "failed");
+  assert.equal(result.failedStage, "plan");
+  assert.deepEqual(result.error, { name: "PlanError", message: "None of the planned endpoints exist in the spec" });
+  assert.deepEqual(ai.calls.map((c) => c.step), ["triage"]);
+  assert.ok(events.some((e) => e.stage === "plan" && e.status === "fail"));
+});
+
+test("an auth error keeps its HTTP status for the UI", async () => {
+  const err = Object.assign(new Error("invalid x-api-key"), { name: "AuthenticationError", status: 401 });
+  const ai = fakeAi({ triage: () => { throw err; } });
+  const { result } = await run(ai);
+  assert.equal(result.failedStage, "plan");
+  assert.deepEqual(result.error, { name: "AuthenticationError", message: "invalid x-api-key", status: 401 });
+});
+
 test("a plan without an https base URL fails at the plan stage", async () => {
   const ai = fakeAi({ triage: () => ({ plan: { ...PLAN, baseUrl: "http://api.calendly.com" } }) });
   const { result } = await run(ai);

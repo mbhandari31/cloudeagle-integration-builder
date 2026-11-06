@@ -14,7 +14,12 @@ const LOOP_STAGES = ["generate", "static", "mock", "validate"];
 const FAILURE_NAMES = { generate: "GenerationError", static: "StaticCheckFailed", mock: "MockRunFailed", validate: "ValidationFailed" };
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
-const errorOf = (e) => ({ name: e?.name || "Error", message: String(e?.message ?? e) });
+// Keeps an HTTP status (e.g. the Anthropic SDK's AuthenticationError.status) so the UI can map it.
+const errorOf = (e) => ({
+  name: e?.name || "Error",
+  message: String(e?.message ?? e),
+  ...(typeof e?.status === "number" ? { status: e.status } : {}),
+});
 
 function httpsHost(baseUrl) {
   try {
@@ -91,6 +96,9 @@ export async function runPipeline(
     slicedSpec = sliceSpec(spec, plan.endpoints.map((e) => ({ method: String(e?.method).toLowerCase(), path: e?.path })));
   } catch (e) {
     return fail("plan", errorOf(e));
+  }
+  if (Object.keys(slicedSpec.paths).length === 0) {
+    return fail("plan", { name: "PlanError", message: "None of the planned endpoints exist in the spec" });
   }
   stage("plan", "pass", `Plan: ${plural(plan.endpoints.length, "endpoint")}, ${style}`);
 

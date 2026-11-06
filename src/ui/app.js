@@ -292,7 +292,7 @@ function renderOutcome(result, now) {
     st.stoppedAt = (R.STAGE_NAMES[result.failedStage] || "an unexpected error").toLowerCase();
     let hint = result.failedStage === "read" ? URL_HINT.live : null;
     const msg = String(result.error?.message ?? "");
-    if (result.error?.name === "AuthenticationError" || /^401\b/.test(msg)) {
+    if (result.error?.status === 401 || result.error?.name === "AuthenticationError" || /^401\b/.test(msg)) {
       result = { ...result, error: { ...result.error, message: "Anthropic didn't accept this API key." } };
       hint = "Check the key, or use Forget key and paste it again.";
     }
