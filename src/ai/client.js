@@ -5,6 +5,9 @@ import { PLAN_SCHEMA } from "./prompts.js";
 export class AiRefusalError extends Error {
   constructor(message) { super(message); this.name = "AiRefusalError"; this.kind = "refusal"; }
 }
+export class PlanError extends Error {
+  constructor(message, cause) { super(message); this.name = "PlanError"; this.kind = "plan"; this.cause = cause; }
+}
 export class ReplayMismatch extends Error {
   constructor(message) { super(message); this.name = "ReplayMismatch"; }
 }
@@ -29,9 +32,12 @@ function usageOf(response) {
 
 function parseTriage(response) {
   checkRefusal(response);
-  const block = response.content.find((b) => b.type === "text");
-  if (!block) throw new Error("Triage reply has no text block");
-  return { plan: JSON.parse(block.text) };
+  const block = (response.content || []).find((b) => b.type === "text");
+  try {
+    return { plan: JSON.parse(block.text) };
+  } catch (e) {
+    throw new PlanError("Couldn't read the plan from the model's reply", e);
+  }
 }
 
 function parseGenerate(response) {
@@ -101,7 +107,7 @@ export function createAiClient(opts) {
       if (!rec) throw new ReplayExhausted(`Recording has no call #${i + 1} (requested "${step}")`);
       if (rec.step !== step) throw new ReplayMismatch(`Recorded call #${i + 1} is "${rec.step}", but "${step}" was requested`);
       i++;
-      if (speed !== Infinity && rec.ms > 0) await sleep(rec.ms / speed);
+      if (speed > 0 && speed !== Infinity && rec.ms > 0) await sleep(rec.ms / speed);
       return { response: rec.response, usage: usageOf(rec.response), ms: rec.ms };
     };
   } else {

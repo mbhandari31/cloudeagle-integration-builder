@@ -1,9 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  PLAN_SCHEMA, triagePrompt, generatePrompt, repairPrompt, extractCode, GenerationError,
+  PLAN_SCHEMA, triagePrompt, generatePrompt, repairPrompt, extractCode, GenerationError, EXAMPLE_CONNECTOR,
 } from "../src/ai/prompts.js";
-import { createAiClient, AiRefusalError, ReplayMismatch, ReplayExhausted } from "../src/ai/client.js";
+import { createAiClient, AiRefusalError, PlanError, ReplayMismatch, ReplayExhausted } from "../src/ai/client.js";
+import { staticCheck } from "../src/sandbox/staticChecks.js";
 
 const PLAN = {
   appName: "calendly", baseUrl: "https://api.calendly.com",
@@ -155,10 +156,54 @@ test("prompt builders carry the contract and inputs", () => {
   }
   assert.doesNotMatch(g.system, /calendly|organization_memberships/i);
   assert.match(g.user, /organization_memberships/);
-  const r = repairPrompt("const x = 1;", { stage: "static", message: "Blocked: write request (POST)", details: { line: 3 } });
-  assert.equal(r.system, g.system);
-  assert.match(r.user, /const x = 1;/);
-  assert.match(r.user, /static/);
-  assert.match(r.user, /Blocked: write request/);
-  assert.match(r.user, /"line": 3/);
+  for (const re of [/fetch\(/, /window\./, /self\./, /Function\(/, /\.constructor/, /WebSocket/, /EventSource/, /including comments and strings/, /`token`/, /absolute https URL/]) {
+    assert.match(g.system, re);
+  }
+  assert.match(t.system, /proxy/);
+  assert.match(t.system, /relative to one item/);
+});
+
+test("the generic example embedded in the generate prompt passes staticCheck", () => {
+  const g = generatePrompt(PLAN, {});
+  assert.ok(g.system.includes(EXAMPLE_CONNECTOR));
+  assert.equal(extractCode(g.system), EXAMPLE_CONNECTOR);
+  assert.deepEqual(staticCheck(EXAMPLE_CONNECTOR, { allowedHost: "api.acme.example" }), { ok: true, issues: [] });
+});
+
+test("repairPrompt carries the failure, the previous code and the plan and spec", () => {
+  const ctx = { plan: PLAN, slicedSpec: { paths: { "/organization_memberships": { get: { summary: "List memberships" } } } } };
+  const r = repairPrompt("const x = 1;", { stage: "static", message: "Blocked: write request (POST)", details: { line: 3 } }, ctx);
+  assert.equal(r.system, generatePrompt(PLAN, {}).system);
+  for (const re of [/const x = 1;/, /"static"/, /Blocked: write request/, /"line": 3/, /List memberships/, /"appName": "calendly"/, /Change only what the error requires/]) {
+    assert.match(r.user, re);
+  }
+  const empty = repairPrompt("", { stage: "generate", message: "No code block in the model's reply" }, ctx);
+  assert.match(empty.user, /Your previous reply had no complete ```ts code block/);
+  assert.doesNotMatch(empty.user, /Your previous code/);
+  assert.match(repairPrompt(undefined, { stage: "generate", message: "x" }).user, /no complete ```ts code block/);
+});
+
+test("extractCode takes the longest ts block", () => {
+  assert.equal(extractCode("```ts\nshort\n```\ntext\n```typescript\nmuch longer body\n```\n```ts\nmid\n```"), "much longer body\n");
+});
+
+test("triage wraps a missing text block or invalid JSON in PlanError", async () => {
+  const bad = [
+    { stop_reason: "end_turn", content: [], usage },
+    { stop_reason: "end_turn", content: [{ type: "text", text: "{not json" }], usage },
+  ];
+  const { FakeAnthropic } = fakeAnthropic(bad);
+  const ai = createAiClient({ mode: "live", apiKey: "k", Anthropic: FakeAnthropic });
+  for (let i = 0; i < 2; i++) {
+    await assert.rejects(ai.triage(prompt), (e) => e instanceof PlanError && e.message === "Couldn't read the plan from the model's reply");
+  }
+});
+
+test("replay with speed <= 0 does not wait", async () => {
+  const recording = { calls: [{ step: "triage", request: {}, response: triageResponse, usage, ms: 60000 }] };
+  for (const speed of [0, -1]) {
+    const t0 = Date.now();
+    await createAiClient({ mode: "replay", recording, speed }).triage(prompt);
+    assert.ok(Date.now() - t0 < 1000);
+  }
 });
