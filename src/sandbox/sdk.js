@@ -19,7 +19,9 @@ export function createSdk({ baseUrl, allowedHost, transport, log: sink = () => {
 
   async function get(path, query, records) {
     const url = new URL(path, baseUrl);
-    if (url.host !== allowedHost) throw new SandboxViolation(`Blocked: ${url.host} is not ${allowedHost}`);
+    if (url.protocol !== "https:" || url.host !== allowedHost) {
+      throw new SandboxViolation(`Blocked: ${url.protocol}//${url.host} is not https://${allowedHost}`);
+    }
     for (const [k, v] of Object.entries(query || {})) {
       if (v !== undefined && v !== null) url.searchParams.set(k, String(v));
     }
@@ -29,9 +31,10 @@ export function createSdk({ baseUrl, allowedHost, transport, log: sink = () => {
       t: Date.now() - t0, method: "GET", path: url.pathname, status: res.status,
       ms: Math.round(now() - start),
     };
-    if (records) entry.records = records(res.json);
+    const ok = res.status >= 200 && res.status < 300;
+    if (records && ok) entry.records = records(res.json);
     sink(entry);
-    if (res.status < 200 || res.status >= 300) throw new ApiError(res.status, res.json);
+    if (!ok) throw new ApiError(res.status, res.json);
     return res.json;
   }
 

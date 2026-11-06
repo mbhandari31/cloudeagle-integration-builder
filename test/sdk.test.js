@@ -87,3 +87,16 @@ test("golden connector runs end to end against the mock", async () => {
   const pages = entries.filter((e) => e.records !== undefined);
   assert.ok(pages.length >= 2);
 });
+
+test("http (non-https) is blocked, including absolute next tokens", async () => {
+  const { sdk } = mk();
+  await assert.rejects(sdk.http.get("http://api.calendly.com/users/me"), (e) => e instanceof SandboxViolation && /https:\/\/api\.calendly\.com/.test(e.message));
+  const transport = async () => ({ status: 200, json: { c: [1], n: "http://api.calendly.com/x" } });
+  const { sdk: s2 } = mk({ transport });
+  await assert.rejects(async () => { for await (const _ of s2.paginate("/a", { next: (r) => r.n, items: (r) => r.c })); }, SandboxViolation);
+});
+
+test("non-2xx with null body through paginate is ApiError", async () => {
+  const { sdk } = mk({ transport: async () => ({ status: 500, json: null }) });
+  await assert.rejects(async () => { for await (const _ of sdk.paginate("/a", { next: () => null, items: (r) => r.collection })); }, (e) => e instanceof ApiError && e.kind === "api" && e.status === 500);
+});

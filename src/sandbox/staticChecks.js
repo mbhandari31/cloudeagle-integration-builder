@@ -36,6 +36,16 @@ function scan(src) {
       const e = src.indexOf("*/", i + 2);
       const end = e < 0 ? n : e + 2;
       code += blank(src.slice(i, end)); i = end;
+    } else if (c === "/" && regexAllowed(code)) {
+      let j = i + 1, inClass = false;
+      while (j < n && src[j] !== "\n" && (inClass || src[j] !== "/")) {
+        if (src[j] === "\\") j++;
+        else if (src[j] === "[") inClass = true;
+        else if (src[j] === "]") inClass = false;
+        j++;
+      }
+      code += "/" + blank(src.slice(i + 1, j)) + (src[j] === "/" ? "/" : "");
+      i = j + 1;
     } else if (c === '"' || c === "'") {
       const j = readString(c, i);
       strings.push({ value: src.slice(i + 1, j), index: i + 1 });
@@ -52,12 +62,22 @@ function scan(src) {
   return { code, strings };
 }
 
+// A "/" starts a regex literal when the previous significant token is not a value.
+function regexAllowed(code) {
+  const t = code.trimEnd();
+  if (!t) return true;
+  const last = t[t.length - 1];
+  if (/[(,=:\[!&|?{};+\-*%<>~^]/.test(last)) return true;
+  const w = /[A-Za-z_$][\w$]*$/.exec(t);
+  return !!w && /^(return|typeof|case|do|else|in|of|instanceof|new|delete|void|throw|yield|await)$/.test(w[0]);
+}
+
 const CODE_RULES = [
   ["network-global", /(?<![.\w$])fetch\s*\(|\bXMLHttpRequest\b|\bWebSocket\b|\bEventSource\b|\bimportScripts\b|\bnavigator\s*\.\s*sendBeacon\b/g, "Direct network access is not allowed; use the SDK http helper"],
   ["escape", /\bglobalThis\b|(?<![.\w$])self\s*\.|(?<![.\w$])window\s*\.|(?<![.\w$])eval\s*\(|(?<![.\w$])Function\s*\(|\.\s*constructor\b|(?<![.\w$])process\s*\.|(?<![.\w$])require\s*\(/g, "Access to globals or the sandbox boundary is not allowed"],
   ["dynamic-import", /\bimport\s*\(/g, "Dynamic import is not allowed"],
   ["write-call", /\bhttp\s*\.\s*(?:post|put|patch|delete)\b/g, "Write requests are not allowed; connectors are read-only"],
-  ["secret-access", /\bapiKey\b|\bAuthorization\b|(?<![\w$.])token\s*=(?!=)/g, "Connectors must not touch credentials"],
+  ["secret-access", /\bapiKey\b|\bAuthorization\b|(?<![\w$.])token\s*=(?![=>])/g, "Connectors must not touch credentials"],
 ];
 
 export function staticCheck(code, { allowedHost } = {}) {

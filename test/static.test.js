@@ -69,3 +69,14 @@ test("transpile strips types and converts imports", () => {
   assert.ok(!out.includes(": number"));
   assert.ok(out.includes("require("));
 });
+
+test("regex literals cannot hide code", () => {
+  assert.ok(rules('/a\\//; fetch("x")').includes("network-global"));
+  assert.ok(rules("/'/.test(s); globalThis.fetch(u)").some((r) => r === "network-global" || r === "escape"));
+  assert.ok(rules("/[/']/.test(s); eval(x)").includes("escape"));
+  assert.deepEqual(rules("const r = /fetch\\(/g; const d = a / b / c;"), []);
+});
+
+test("arrow function parameter named token is clean", () => {
+  assert.deepEqual(rules("const o = { next: token => token.next };"), []);
+});
