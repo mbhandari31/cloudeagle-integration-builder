@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1440">
+<title>01 Start: point at the docs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Poppins:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <aside class="nav">
+    <div class="brand"><span class="brand-mark"><svg viewBox="0 0 16 16" fill="none"><path d="M2 11 8 4l6 7" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>CloudEagle</div>
+    <a href="#">Overview</a>
+    <a href="#">Applications <span class="count">412</span></a>
+    <a href="#">Spend and licences</a>
+    <a href="#">Renewals</a>
+    <a href="#">Access reviews</a>
+    <a href="#">AI governance</a>
+    <div class="nav-group">Settings</div>
+    <a href="#" class="active">Integrations <span class="count">38</span></a>
+    <a href="#">Users and roles</a>
+    <div class="nav-foot">Northwind Health</div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="crumbs">Integrations / <b>New generated connector</b></div>
+      <div class="who"><span>Priya Raman, IT admin</span><span class="avatar">PR</span></div>
+    </header>
+
+    <nav class="stepper" aria-label="Progress">
+      <div class="step current"><span class="dot">1</span>Point at docs<span class="bar"></span></div>
+      <div class="step"><span class="dot">2</span>Review plan<span class="bar"></span></div>
+      <div class="step"><span class="dot">3</span>Connect<span class="bar"></span></div>
+      <div class="step"><span class="dot">4</span>Test in sandbox<span class="bar"></span></div>
+      <div class="step"><span class="dot">5</span>Go live<span class="bar"></span></div>
+    </nav>
+
+    <section class="content cols-main-rail">
+      <div class="stack">
+        <div class="page-head">
+          <div>
+            <h1>Connect an app that isn't in the catalogue</h1>
+            <p>Point us at the app's API documentation. We'll write a read-only connector, test it in a sandbox, and show you the data before anything goes live.</p>
+          </div>
+        </div>
+
+        <div class="panel panel-pad stack">
+          <div class="field">
+            <label for="docs">API documentation link</label>
+            <div class="input focus" id="docs">https://developer.calendly.com/api-docs/4b402d5ab3edd-calendly-developer</div>
+            <div class="hint">No public docs? Upload an OpenAPI file, a Postman collection or a sample API response instead.</div>
+          </div>
+
+          <div class="note note-green">
+            <svg class="ico" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5"/><path d="m6 10 3 3 5-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <div><b>Found Calendly API v2</b><p>A machine-readable OpenAPI spec (65 endpoints) and an llms.txt index. Machine-readable docs usually produce the most accurate connectors.</p></div>
+          </div>
+
+          <div class="field">
+            <label>What should CloudEagle get from Calendly?</label>
+            <div class="stack" style="gap:10px">
+              <div class="check on"><span class="box"><svg viewBox="0 0 10 10"><path d="m2 5 2 2 4-4" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg></span><div><div class="t">Users and roles</div><div class="d">Who has an account, their role and status. Needed for access reviews and offboarding.</div></div></div>
+              <div class="check on"><span class="box"><svg viewBox="0 0 10 10"><path d="m2 5 2 2 4-4" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg></span><div><div class="t">Usage and last active date</div><div class="d">When each person last used the app. Needed to find unused licences.</div></div></div>
+              <div class="check"><span class="box"></span><div><div class="t">Licence and plan details</div><div class="d">Seat count and plan tier, if the API exposes them.</div></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-primary">Read docs and draft a plan</button>
+          <span class="hint" style="margin:0">Takes about a minute. Nothing connects to Calendly yet.</span>
+        </div>
+      </div>
+
+      <aside class="stack">
+        <div class="panel panel-pad stack" style="gap:14px">
+          <h2>Before you start</h2>
+          <dl class="kv">
+            <dt>Catalogue match</dt><dd>None for this API</dd>
+            <dt>Access</dt><dd>Read-only, always</dd>
+            <dt>Your effort</dt><dd>About 15 minutes</dd>
+            <dt>Code to write</dt><dd>None</dd>
+          </dl>
+        </div>
+        <div class="note note-blue">
+          <svg class="ico" viewBox="0 0 20 20" fill="none"><rect x="4" y="9" width="12" height="8" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M7 9V6.5a3 3 0 0 1 6 0V9" stroke="currentColor" stroke-width="1.5"/></svg>
+          <div><b>Generated connectors can only read</b><p>CloudEagle blocks any request that could change data in Calendly, whatever the generated code says.</p></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Recently generated in your workspace</h3></div>
+          <table>
+            <tr><td>Lattice<div class="sub">Generated 12 Oct</div></td><td style="text-align:right"><span class="badge b-green">Live</span></td></tr>
+            <tr><td>Loom<div class="sub">Generated 28 Sep</div></td><td style="text-align:right"><span class="badge b-green">Live</span></td></tr>
+            <tr><td>Fathom<div class="sub">Generated 3 Nov</div></td><td style="text-align:right"><span class="badge b-amber">Shadow sync, day 3</span></td></tr>
+          </table>
+        </div>
+      </aside>
+    </section>
+  </div>
+</div>
+</body>
+</html>

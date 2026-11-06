@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1440">
+<title>06 Go live and monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Poppins:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <aside class="nav">
+    <div class="brand"><span class="brand-mark"><svg viewBox="0 0 16 16" fill="none"><path d="M2 11 8 4l6 7" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>CloudEagle</div>
+    <a href="#">Overview</a>
+    <a href="#">Applications <span class="count">412</span></a>
+    <a href="#">Spend and licences</a>
+    <a href="#">Renewals</a>
+    <a href="#">Access reviews</a>
+    <a href="#">AI governance</a>
+    <div class="nav-group">Settings</div>
+    <a href="#" class="active">Integrations <span class="count">38</span></a>
+    <a href="#">Users and roles</a>
+    <div class="nav-foot">Northwind Health</div>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="crumbs">Integrations / <b>Calendly</b></div>
+      <div class="who"><span>Priya Raman, IT admin</span><span class="avatar">PR</span></div>
+    </header>
+    <section class="content cols-main-rail">
+      <div class="stack">
+        <div class="page-head">
+          <div>
+            <div class="actions" style="gap:12px"><h1>Calendly</h1><span class="badge b-green">Live</span><span class="badge b-blue">Generated</span></div>
+            <p>Live since 20 Nov 2026 after a clean 7-day shadow sync. Syncs daily at 02:00 UTC.</p>
+          </div>
+          <div class="actions"><button class="btn btn-ghost">Pause sync</button><button class="btn btn-primary">Review unused licences</button></div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:16px">
+          <div class="panel panel-pad"><p style="font-size:13px">People</p><h1>48</h1></div>
+          <div class="panel panel-pad"><p style="font-size:13px">Unused for 90 days</p><h1>11</h1></div>
+          <div class="panel panel-pad"><p style="font-size:13px">Possible yearly saving</p><h1>$2,112</h1><p style="font-size:12px">11 seats at $16 a month</p></div>
+          <div class="panel panel-pad"><p style="font-size:13px">Healthy syncs since go-live</p><h1 style="color:var(--green)">20 of 20</h1></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>What's happened</h2><p>Alerts reach you and CloudEagle support</p></div>
+          <table>
+            <tr><td style="width:120px" class="sub">9 Dec</td><td>Daily sync finished: 48 people, 0 errors, 6 API calls.</td><td style="text-align:right"><span class="badge b-green">Healthy</span></td></tr>
+            <tr><td class="sub">2 Dec</td><td>Calendly added a new field to its user data. It isn't one we use, so nothing changed.</td><td style="text-align:right"><span class="badge b-grey">No action needed</span></td></tr>
+            <tr class="flag"><td class="sub">27 Nov</td><td>Calendly renamed a field we use for roles. We drafted a fix, tested it in the sandbox, and Priya approved it.<div class="sub">Version 2 went live the same day. Reports kept the last good data until then.</div></td><td style="text-align:right"><span class="badge b-amber">Fixed in 4 hours</span></td></tr>
+            <tr><td class="sub">21 Nov</td><td>Calendly asked us to slow down once during the sync. We waited 30 seconds and finished normally.</td><td style="text-align:right"><span class="badge b-green">Handled</span></td></tr>
+          </table>
+        </div>
+      </div>
+
+      <aside class="stack">
+        <div class="panel">
+          <div class="panel-head"><h2>Versions</h2></div>
+          <table>
+            <tr><td><b>Version 2</b> <span class="badge b-green">Live</span><div class="sub">27 Nov, role field fix. Approved by Priya Raman.</div></td></tr>
+            <tr><td><b>Version 1</b><div class="sub">13 Nov, first version. Approved by Priya Raman.</div><button class="btn btn-link" style="font-size:13px; margin-top:4px">Roll back to this version</button></td></tr>
+          </table>
+        </div>
+
+        <div class="panel panel-pad stack" style="gap:12px">
+          <h2>Access</h2>
+          <dl class="kv">
+            <dt>Permissions</dt><dd>3, all read-only</dd>
+            <dt>Connected by</dt><dd>Priya Raman</dd>
+            <dt>Token</dt><dd>Refreshes on its own</dd>
+            <dt>Audit log</dt><dd><span class="btn-link" style="font-weight:600">214 entries</span></dd>
+          </dl>
+        </div>
+
+        <div class="note note-blue">
+          <svg class="ico" viewBox="0 0 20 20" fill="none"><path d="M10 2v16M2 10h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <div><b>Share this connector with other CloudEagle customers?</b><p>We'll review it, remove anything specific to Northwind, and add it to the catalogue as a certified connector.</p><button class="btn btn-link" style="font-size:13px; margin-top:6px">Submit for certification</button></div>
+        </div>
+      </aside>
+    </section>
+
+  </div>
+</div>
+</body>
+</html>
