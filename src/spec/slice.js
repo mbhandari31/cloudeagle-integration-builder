@@ -11,7 +11,7 @@ export function sliceSpec(spec, endpoints) {
     (paths[path] ||= {})[method] = deref(spec, full);
   }
   return {
-    openapi: spec.openapi || spec.swagger,
+    openapi: spec.openapi,
     info: spec.info,
     servers: spec.servers || [],
     components: { securitySchemes: deref(spec, spec.components?.securitySchemes || {}) },

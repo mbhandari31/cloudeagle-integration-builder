@@ -8,6 +8,7 @@ export class SpecError extends Error {
 }
 
 const BAD_URL = "Couldn't read an OpenAPI spec at this URL";
+const SWAGGER_2 = "This builder supports OpenAPI 3.x specs. Swagger 2.0 isn't supported yet.";
 
 export function parseSpec(text) {
   let doc;
@@ -16,9 +17,10 @@ export function parseSpec(text) {
   } catch (e) {
     throw new SpecError(BAD_URL);
   }
-  if (!doc || typeof doc !== "object" || !(doc.openapi || doc.swagger)) {
-    throw new SpecError(BAD_URL);
-  }
+  if (!doc || typeof doc !== "object") throw new SpecError(BAD_URL);
+  // Summaries, slicing and the mock all read OpenAPI 3 shapes (servers, content[...].schema).
+  if (doc.swagger && !doc.openapi) throw new SpecError(SWAGGER_2);
+  if (!/^3\./.test(String(doc.openapi ?? ""))) throw new SpecError(BAD_URL);
   return doc;
 }
 

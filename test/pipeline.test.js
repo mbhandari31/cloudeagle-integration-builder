@@ -131,6 +131,16 @@ test("a plan without an https base URL fails at the plan stage", async () => {
   assert.equal(result.error.message, "The plan has no valid https base URL");
 });
 
+test("a Swagger 2.0 spec fails at the read stage with a clear message", async () => {
+  const fetchImpl = async () => ({ ok: true, text: async () => "swagger: '2.0'\ninfo: {title: Old, version: '1'}\npaths: {}\n" });
+  const ai = fakeAi();
+  const result = await runPipeline({ specUrl: "https://example.com/swagger.yaml", ai, runner: runInNode, now, fetchImpl });
+  assert.equal(result.status, "failed");
+  assert.equal(result.failedStage, "read");
+  assert.deepEqual(result.error, { name: "SpecError", message: "This builder supports OpenAPI 3.x specs. Swagger 2.0 isn't supported yet." });
+  assert.equal(ai.calls.length, 0);
+});
+
 test("a spec URL that is not OpenAPI fails at the read stage", async () => {
   const fetchImpl = async () => ({ ok: true, text: async () => "<html>hi</html>" });
   const result = await runPipeline({ specUrl: "https://example.com", ai: fakeAi(), runner: runInNode, now, fetchImpl });
